@@ -4,10 +4,10 @@ import os
 import sys
 
 from nifty.ui import PlotUI, PlotConfig
+from nifty.io import INPUT_TYPES, load_spectrum, trim_spectrum, load_features, load_measurements
 
 
 LOGGER = logging.getLogger(__name__)
-INPUT_TYPES = ['FITS']
 FEATURE_PATH = os.path.join('resources', 'dibs')
 
 
@@ -30,7 +30,8 @@ def print_demo_message():
     s = f'''
     {'-'*40}
     # NIFTY DEMO MODE
-    # Working with synthetic spectrum
+    # Working with synthetic spectrum.
+    # Start with "-h" to get available options.
     {'-'*40}
     '''
     print(s)
@@ -64,18 +65,25 @@ if __name__ == '__main__':
         parser.add_argument('-i', '--input', required=True, help='Specify spectrum input file.')
         parser.add_argument('-t', '--type', required=True, type=str.upper, help='Specify type of input file.')
         parser.add_argument('-o', '--output', required=True, help='Specify the output file.')
-        parser.add_argument('--xkey', required=True, help='Specify key of x values in input file.')
-        parser.add_argument('--ykey', required=True, help='Specify key of y values in input file.')
+        parser.add_argument('--xkey', required=False, default=None, help='Specify key of x values in input file.')
+        parser.add_argument('--ykey', required=False, default=None, help='Specify key of y values in input file.')
         parser.add_argument('-f', '--features', default=None, help='Specify absorption feature input file.')
-        parser.add_argument('-d', '--demo', required=False, help='Start NIFTY in demo mode.')  # TODO: implement demo
         args = parser.parse_args()
 
         input_validation(args)
         summarize_input_parameters(args)
 
-        # TODO: parse / load input parameters
+        xs, ys = load_spectrum(args.input, args.type, args.xkey, args.ykey)
+
+        dibs = load_features(args.features, xs.min(), xs.max())
+        config = PlotConfig(xs, ys, dibs)
+
+        if os.path.isfile(args.output):
+            measurements = load_measurements(args.output)
 
     else:
         print_demo_message()
+        config = PlotConfig()
+        measurements = None
 
-    PlotUI(PlotConfig())
+    PlotUI(config)

@@ -5,9 +5,12 @@ from matplotlib.widgets import SpanSelector
 
 
 class PlotUI:
-    def __init__(self, config):
+    def __init__(self, config, measurements=None):
         self.config = config
-        self.measurements = Measurements(self.config.dibs)
+        if measurements is None:
+            self.measurements = Measurements(self.config.dibs)
+        else:
+            self.measurements = measurements
 
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
         self.fig.canvas.set_window_title('NIFTY')
@@ -145,6 +148,7 @@ class PlotUI:
 class PlotConfig:
     def __init__(self, xs=None, ys=None, dibs=None):
         # parameter for full spectrum
+        # TODO: distinguish between missing xs/ys and missing dibs
         if any((xs is None, ys is None, dibs is None)):
             self.create_spectrum()
         else:
