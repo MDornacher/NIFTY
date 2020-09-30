@@ -6,7 +6,7 @@ import pytest
 
 from click.testing import CliRunner
 
-from nifty import nifty
+from nifty import main
 from nifty import cli
 
 

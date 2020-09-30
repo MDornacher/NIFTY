@@ -3,6 +3,10 @@ import json
 from astropy.io import fits
 
 
+def load_spectrum():
+    pass
+
+
 def read_2d_fits_spectrum(self, input_file, xkey="lambda", ykey="flux"):
     xs = None
     ys = None
