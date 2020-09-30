@@ -20,7 +20,7 @@ NIFTY is a lightweight python tool for local spectrum normalization and absorpti
 
 
 * Free software: MIT license
-* Documentation: https://nifty.readthedocs.io.
+* Documentation: https://nifty-spectrum-normalization.readthedocs.io.
 
 
 Features
