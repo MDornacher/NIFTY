@@ -48,31 +48,45 @@ def read_2d_fits_spectrum(input_file, xkey='lambda', ykey='flux'):
     return xs, ys
 
 
-def load_features(input_file, feature_min=None, feature_max=None):
+def trim_spectrum(xs, ys):
+    # TODO: trim spectrum, extend np.trim_zeros somehow
+    xs_trimmed, ys_trimmed = xs, ys
+    return xs_trimmed, ys_trimmed
+
+
+def load_features(input_file):
     with open(input_file) as f:
         data_raw = f.read().splitlines()
     data_final = []
-    data_excluded = []
     data_errors = []
     for entry in data_raw:
         try:
-            fentry = float(entry)
+            data_final.append(float(entry))
         except ValueError:
             data_errors.append(entry)
-            continue
-        if feature_min is not None and fentry < feature_min:
-            data_excluded.append(fentry)
-            continue
-        if feature_max is not None and fentry > feature_max:
-            data_excluded.append(fentry)
-            continue
-        data_final.append(fentry)
+
     if data_errors:
         LOGGER.warning(f'The following entries in feature input {input_file} could not be loaded: '
                        f'{data_errors}')
-    if data_excluded:
-        LOGGER.info(f'')
     return data_final
+
+
+def trim_features(features, feature_min=None, feature_max=None):
+    # TODO maybe this should be done when plotting
+    features_trimmed = []
+    features_excluded = []
+    for feature in features:
+        if feature_min is not None and feature < feature_min:
+            features_excluded.append(feature)
+            continue
+        if feature_max is not None and feature > feature_max:
+            features_excluded.append(feature)
+            continue
+        features_trimmed.append(feature)
+    if features_excluded:
+        LOGGER.info(f'The number of features changed from {len(features)} to {len(features_trimmed)}. '
+                    f'The following features have been excluded: {features_excluded}')
+    return features_trimmed
 
 
 def load_measurements(input_file):
