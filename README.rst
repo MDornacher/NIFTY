@@ -3,9 +3,6 @@ NIFTY
 =====
 
 
-.. image:: https://img.shields.io/pypi/v/nifty.svg
-        :target: https://pypi.python.org/pypi/nifty
-
 .. image:: https://img.shields.io/travis/MDornacher/nifty.svg
         :target: https://travis-ci.com/MDornacher/nifty
 
