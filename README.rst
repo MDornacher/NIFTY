@@ -10,7 +10,7 @@ NIFTY
         :target: https://travis-ci.com/MDornacher/nifty
 
 .. image:: https://readthedocs.org/projects/nifty/badge/?version=latest
-        :target: https://nifty.readthedocs.io/en/latest/?badge=latest
+        :target: https://nifty-spectrum-normalization.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
 
