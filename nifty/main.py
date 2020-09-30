@@ -3,8 +3,7 @@ import logging
 import os
 import sys
 
-from nifty.ui import PlotUI
-from nifty.io import load_spectrum
+from nifty.ui import PlotUI, PlotConfig
 
 
 LOGGER = logging.getLogger(__name__)
@@ -38,7 +37,6 @@ def print_demo_message():
 
 
 def input_validation(args):
-
     if not os.path.isfile(args.input):
         raise ValueError(f'Input "{args.input}" is not a file.')
     if not os.access(args.input, os.R_OK):
@@ -80,4 +78,4 @@ if __name__ == '__main__':
     else:
         print_demo_message()
 
-    PlotUI()
+    PlotUI(PlotConfig())
