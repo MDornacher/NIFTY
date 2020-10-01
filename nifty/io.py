@@ -78,9 +78,16 @@ def read_2d_norm_spectrum(input_file):
 
 
 def trim_spectrum(xs, ys):
-    # TODO: trim spectrum, extend np.trim_zeros somehow
-    xs_trimmed, ys_trimmed = xs, ys
-    return xs_trimmed, ys_trimmed
+    ys_trimmed = np.trim_zeros(ys)
+    i_start = np.where(ys == ys_trimmed[0])[0][0]
+    i_end = i_start + len(ys_trimmed)
+    xs_trimmed = xs[i_start:i_end]
+    if len(xs_trimmed) == len(ys_trimmed):
+        LOGGER.info('The size of the (x, y) values in the spectrum changed from '
+                    f'{(len(xs), len(ys))} to {(len(xs_trimmed), len(ys_trimmed))}.')
+        return xs_trimmed, ys_trimmed
+    raise ValueError('The trimmed size of the (x, y) values no longer matches: '
+                     f'{len(xs_trimmed)} != {len(ys_trimmed)}')
 
 
 def load_features(input_file):
