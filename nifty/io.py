@@ -2,10 +2,11 @@ import json
 import logging
 
 from astropy.io import fits
+import numpy as np
 
 
 LOGGER = logging.getLogger(__name__)
-INPUT_TYPES = ['FITS']
+INPUT_TYPES = ['FITS', 'NORM']
 
 
 def load_spectrum(input_file, input_type, xkey=None, ykey=None):
@@ -18,6 +19,10 @@ def load_spectrum(input_file, input_type, xkey=None, ykey=None):
         if ykey is not None:
             ykey_filtered = ykey
         return read_2d_fits_spectrum(input_file, xkey_filtered, ykey_filtered)
+
+    if input_type == 'NORM':
+        return read_2d_norm_spectrum(input_file)
+
     # TODO: add import for other input types, e.g.: 'NORM', 'ASCII'(?)
     raise ValueError(f'Type "{input_type}" is not in list of valid input types {INPUT_TYPES}.')
 
@@ -46,6 +51,30 @@ def read_2d_fits_spectrum(input_file, xkey='lambda', ykey='flux'):
     if xs is None or ys is None:
         raise ValueError(f'The FITS file {input_file} has no data with the key {xkey} or {ykey}')
     return xs, ys
+
+
+def read_2d_norm_spectrum(input_file):
+    with open(input_file) as f:
+        data_raw = f.read().splitlines()
+    xs = []
+    ys = []
+    data_errors = []
+    for line in data_raw:
+        if len(line.split()) == 2:
+            try:
+                x, y = [float(i) for i in line.split()]
+                xs.append(x)
+                ys.append(y)
+            except ValueError:
+                data_errors.append(line)
+        else:
+            if line:
+                data_errors.append(line)
+
+    if data_errors:
+        LOGGER.warning(f'The following entries in input {input_file} could not be loaded: '
+                       f'{data_errors}')
+    return np.array(xs), np.array(ys)
 
 
 def trim_spectrum(xs, ys):

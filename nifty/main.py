@@ -32,6 +32,8 @@ def main():
         dibs = load_features(args.features)
         dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
 
+        # TODO: check that spectrum and dibs use the same unit of measurement (maybe with some "matching" parameter
+
         config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed)
 
         if os.path.isfile(args.output):
@@ -67,6 +69,7 @@ def input_validation(args):
         raise ValueError(f'Input "{args.features}" is not a file.')
     if not os.access(args.features, os.R_OK):
         raise ValueError(f'Input "{args.features}" is not readable.')
+
 
 def summarize_input_parameters(args):
     s = f'''
