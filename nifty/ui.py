@@ -3,14 +3,17 @@ from scipy import signal
 from matplotlib import pyplot as plt
 from matplotlib.widgets import SpanSelector
 
+from nifty.io import save_measurements
+
 
 class PlotUI:
-    def __init__(self, config, measurements=None):
+    def __init__(self, config, output_file, measurements=None):
         self.config = config
         if measurements is None:
             self.measurements = Measurements(self.config.dibs)
         else:
             self.measurements = measurements
+        self.output_file = output_file
 
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
         self.fig.canvas.set_window_title('NIFTY')
@@ -139,6 +142,8 @@ class PlotUI:
             self.config.increase_x_range()
             self.reset_plot()
         if event.key == ' ':
+            print(f'Saving measurements to {self.output_file}')
+            save_measurements(self.measurements.results, self.output_file)
             for k, v in self.measurements.results.items():
                 print(k, v)
         if event.key == 'escape':

@@ -32,13 +32,14 @@ def main():
             measurements = load_measurements(args.output)
         else:
             measurements = None
-
+        output_file = args.output
     else:
         print_demo_message()
         config = PlotConfig()
         measurements = None
+        output_file = "demo_measurements.json"
 
-    PlotUI(config, measurements)
+    PlotUI(config, output_file, measurements)
 
 
 def parse_input():
