@@ -118,6 +118,23 @@ def trim_features(features, feature_min=None, feature_max=None):
     return features_trimmed
 
 
+def match_spectrum_unit_to_features(xs, features):
+    features_min = min(features)
+    features_max = max(features)
+
+    f_unit_range = range(9, -10, -3)
+    for f_unit_power in f_unit_range:
+        f_unit = 10**f_unit_power
+        xs_matched_min = xs.min() * f_unit
+        xs_matched_max = xs.max() * f_unit
+        if features_min < xs_matched_min < features_max or features_min < xs_matched_max < features_max:
+            LOGGER.info(f'The spectrum could be matched with the factor {f_unit}')
+            return xs * f_unit
+    # TODO: mismatched xs will be returned if the values get to small
+    raise ValueError(f'The spectrum could not be matched with the following factors: '
+                     f'10**{list(f_unit_range)}')
+
+
 def load_measurements(input_file):
     return json.load(input_file)
 

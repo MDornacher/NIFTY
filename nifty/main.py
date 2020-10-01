@@ -5,7 +5,7 @@ import sys
 
 from nifty.ui import PlotUI, PlotConfig
 from nifty.io import INPUT_TYPES, load_spectrum, load_features, load_measurements, \
-    trim_spectrum, trim_features
+    trim_spectrum, trim_features, match_spectrum_unit_to_features
 
 
 LOGGER = logging.getLogger(__name__)
@@ -14,25 +14,17 @@ FEATURE_PATH = os.path.join('resources', 'dibs')
 
 def main():
     if len(sys.argv) > 1:
-        parser = argparse.ArgumentParser()
-        parser.add_argument('-i', '--input', required=True, help='Specify spectrum input file.')
-        parser.add_argument('-t', '--type', required=True, type=str.upper, help='Specify type of input file.')
-        parser.add_argument('-o', '--output', required=True, help='Specify the output file.')
-        parser.add_argument('--xkey', required=False, default=None, help='Specify key of x values in input file.')
-        parser.add_argument('--ykey', required=False, default=None, help='Specify key of y values in input file.')
-        parser.add_argument('-f', '--features', default=None, help='Specify absorption feature input file.')
-        args = parser.parse_args()
-
-        input_validation(args)
+        args = parse_input()
+        validate_input(args)
         summarize_input_parameters(args)
 
         xs, ys = load_spectrum(args.input, args.type, args.xkey, args.ykey)
-        xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
-
         dibs = load_features(args.features)
-        dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
+        if args.matching:
+            xs = match_spectrum_unit_to_features(xs, dibs)
 
-        # TODO: check that spectrum and dibs use the same unit of measurement (maybe with some "matching" parameter
+        xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
+        dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
 
         config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed)
 
@@ -49,7 +41,20 @@ def main():
     PlotUI(config, measurements)
 
 
-def input_validation(args):
+def parse_input():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input', required=True, help='Specify spectrum input file.')
+    parser.add_argument('-t', '--type', required=True, type=str.upper, help='Specify type of input file.')
+    parser.add_argument('-o', '--output', required=True, help='Specify the output file.')
+    parser.add_argument('--xkey', required=False, default=None, help='Specify key of x values in input file.')
+    parser.add_argument('--ykey', required=False, default=None, help='Specify key of y values in input file.')
+    parser.add_argument('-f', '--features', default=None, help='Specify absorption feature input file.')
+    parser.add_argument('-m', '--matching', help='Match unit of measurement of spectrum to absorption features.',
+                        action='store_true')
+    return parser.parse_args()
+
+
+def validate_input(args):
     if not os.path.isfile(args.input):
         raise ValueError(f'Input "{args.input}" is not a file.')
     if not os.access(args.input, os.R_OK):
@@ -79,6 +84,7 @@ def summarize_input_parameters(args):
     #\tType: {args.type}
     #\tX-Key: {args.xkey}
     #\tY-Key: {args.ykey}
+    #\tMatching: {args.matching}
     # Output: {args.output}
     # Features: {args.features}
     {'-'*40}
