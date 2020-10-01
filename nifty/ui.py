@@ -99,7 +99,7 @@ class PlotUI:
         indmin = max(0, indmin - 2)
         indmax = min(len(self.config.xs) - 1, indmax)
 
-        diff = self.config.ys_norm[indmin:indmax] * (self.config.xs[1] - self.config.xs[0])
+        diff = (1 - self.config.ys_norm[indmin:indmax]) * (self.config.xs[1] - self.config.xs[0])
         ew = sum(diff)
         self.measurements.results[str(self.config.selected_dib)].append(ew)
 
@@ -171,7 +171,7 @@ class PlotConfig:
         self.y_range_factor = 1.1
 
     def create_spectrum(self, x_range=(100, 200), sigma_range=(1, 5), strength_range=(0, 1), number_of_values=300,
-                        number_of_dibs=10, sn=10):
+                        number_of_dibs=3, sn=10):
         if x_range is None:
             x_range_min, x_range_max = (100, 500)
         else:
