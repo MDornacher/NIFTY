@@ -3,16 +3,16 @@ from scipy import signal
 from matplotlib import pyplot as plt
 from matplotlib.widgets import SpanSelector
 
-from nifty.io import save_measurements
+from nifty.io import save_results
 
 
 class PlotUI:
-    def __init__(self, config, output_file, measurements=None):
+    def __init__(self, config, output_file, results=None):
         self.config = config
-        if measurements is None:
-            self.measurements = Measurements(self.config.dibs)
-        else:
-            self.measurements = measurements
+        self.measurements = Measurements(self.config.dibs)
+        if results is not None:
+            self.measurements.results = results
+            self.validate_results()
         self.output_file = output_file
 
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
@@ -26,6 +26,16 @@ class PlotUI:
         self.span_ew = SpanSelector(self.ax3, self.onselect_ew_range, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.5, facecolor='yellow'))
         plt.show()
+
+    def validate_results(self):
+        dibs_test_list = [str(dib) for dib in self.config.dibs]
+        results_test_list = list(self.measurements.results.keys())
+
+        dibs_test_list.sort()
+        results_test_list.sort()
+
+        if dibs_test_list != results_test_list:
+            raise ValueError(f'The list of dibs and results do not match.')
 
     def reset_plot(self):
         self.config.reset_fit()
@@ -115,7 +125,7 @@ class PlotUI:
         self.ax3.plot(self.config.xs, self.config.ys_norm)
         self.ax3.fill_between(self.config.xs, self.config.ys_norm, 1,
                               where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
-                              color='green', alpha=0.5, label='EW={:6.2f}'.format(ew))
+                              color='green', alpha=0.5, label='EW={:6.6f}'.format(ew))
         self.ax3.legend()
         self.fig.canvas.draw()
 
@@ -143,7 +153,7 @@ class PlotUI:
             self.reset_plot()
         if event.key == ' ':
             print(f'Saving measurements to {self.output_file}')
-            save_measurements(self.measurements.results, self.output_file)
+            save_results(self.measurements.results, self.output_file)
             for k, v in self.measurements.results.items():
                 print(k, v)
         if event.key == 'escape':

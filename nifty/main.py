@@ -4,17 +4,19 @@ import os
 import sys
 
 from nifty.ui import PlotUI, PlotConfig
-from nifty.io import INPUT_TYPES, load_spectrum, load_features, load_measurements, \
+from nifty.io import INPUT_TYPES, load_spectrum, load_features, load_results, \
     trim_spectrum, trim_features, match_spectrum_unit_to_features
 
 
 LOGGER = logging.getLogger(__name__)
 FEATURE_PATH = os.path.join('resources', 'dibs')
+DEFAULT_NIFTY_OUTPUT_EXTENSION = '_nifty.json'
 
 
 def main():
     if len(sys.argv) > 1:
         args = parse_input()
+        args = validate_output_path(args)
         validate_input(args)
         summarize_input_parameters(args)
 
@@ -29,30 +31,38 @@ def main():
         config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed)
 
         if os.path.isfile(args.output):
-            measurements = load_measurements(args.output)
+            results = load_results(args.output)
         else:
-            measurements = None
+            results = None
         output_file = args.output
     else:
         print_demo_message()
         config = PlotConfig()
-        measurements = None
+        results = None
         output_file = "demo_measurements.json"
 
-    PlotUI(config, output_file, measurements)
+    PlotUI(config, output_file, results)
 
 
 def parse_input():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', required=True, help='Specify spectrum input file.')
     parser.add_argument('-t', '--type', required=True, type=str.upper, help='Specify type of input file.')
-    parser.add_argument('-o', '--output', required=True, help='Specify the output file.')
+    parser.add_argument('-o', '--output', default=None, help='Specify the output file.')
     parser.add_argument('--xkey', required=False, default=None, help='Specify key of x values in input file.')
     parser.add_argument('--ykey', required=False, default=None, help='Specify key of y values in input file.')
     parser.add_argument('-f', '--features', default=None, help='Specify absorption feature input file.')
     parser.add_argument('-m', '--matching', help='Match unit of measurement of spectrum to absorption features.',
                         action='store_true')
     return parser.parse_args()
+
+
+def validate_output_path(args):
+    if args.output is not None:
+        return args
+    reusable_input_name, _ = os.path.splitext(args.input)
+    args.output = reusable_input_name + DEFAULT_NIFTY_OUTPUT_EXTENSION
+    return args
 
 
 def validate_input(args):
