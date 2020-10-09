@@ -50,6 +50,7 @@ def main():
                 results = None
 
             PlotUI(config, output_file, results)
+            # TODO:  plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
 
 
 def parse_input():

@@ -157,7 +157,7 @@ class PlotUI:
             for k, v in self.measurements.results.items():
                 print(k, v)
         if event.key == 'escape':
-            plt.close()
+            plt.close('all')
 
 
 class PlotConfig:
