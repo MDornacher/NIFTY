@@ -161,7 +161,7 @@ class PlotUI:
 
 
 class PlotConfig:
-    def __init__(self, xs=None, ys=None, dibs=None):
+    def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None):
         # parameter for full spectrum
         # TODO: distinguish between missing xs/ys and missing dibs
         if any((xs is None, ys is None, dibs is None)):
@@ -170,6 +170,13 @@ class PlotConfig:
             self.xs = xs
             self.ys = ys
             self.dibs = dibs
+
+        if xs_ref is None or ys_ref is None:
+            self.xs_ref = []
+            self.ys_ref = []
+        else:
+            self.xs_ref = xs_ref
+            self.ys_ref = ys_ref
 
         # parameter for norm
         self.xs_fit_data = np.array([])
