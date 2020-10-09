@@ -1,4 +1,5 @@
 import argparse
+import glob
 import logging
 import os
 import sys
@@ -14,41 +15,49 @@ DEFAULT_NIFTY_OUTPUT_EXTENSION = '_nifty.json'
 
 
 def main():
-    if len(sys.argv) > 1:
-        args = parse_input()
-        args = validate_output_path(args)
-        validate_input(args)
-        summarize_input_parameters(args)
-
-        xs, ys = load_spectrum(args.input, args.type, args.xkey, args.ykey)
-        dibs = load_features(args.features)
-        if args.matching:
-            xs = match_spectrum_unit_to_features(xs, dibs)
-
-        xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
-        dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
-
-        config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed)
-
-        if os.path.isfile(args.output):
-            results = load_results(args.output)
-        else:
-            results = None
-        output_file = args.output
-    else:
+    if len(sys.argv) == 0:
         print_demo_message()
         config = PlotConfig()
         results = None
         output_file = "demo_measurements.json"
+        PlotUI(config, output_file, results)
 
-    PlotUI(config, output_file, results)
+    else:
+        args = parse_input()
+
+        args = validate_input_path(args)
+        # args = validate_output_path(args)  # TODO: need to be reworked for multi file input
+
+        validate_parameters(args)
+        summarize_input_parameters(args)
+
+        dibs = load_features(args.features)
+
+        for selected_input in args.input:
+            xs, ys = load_spectrum(selected_input, args.type, args.xkey, args.ykey)
+            if args.matching:
+                xs = match_spectrum_unit_to_features(xs, dibs)
+
+            xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
+            dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
+
+            config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed)
+
+            output_file = create_output_path(selected_input)
+            if os.path.isfile(output_file):
+                results = load_results(output_file)
+            else:
+                results = None
+
+            PlotUI(config, output_file, results)
 
 
 def parse_input():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', required=True, help='Specify spectrum input file.')
     parser.add_argument('-t', '--type', required=True, type=str.upper, help='Specify type of input file.')
-    parser.add_argument('-o', '--output', default=None, help='Specify the output file.')
+    # parser.add_argument('-o', '--output', default=None, help='Specify the output file.')
+    # TODO: need to be reworked for multi file input
     parser.add_argument('--xkey', required=False, default=None, help='Specify key of x values in input file.')
     parser.add_argument('--ykey', required=False, default=None, help='Specify key of y values in input file.')
     parser.add_argument('-f', '--features', default=None, help='Specify absorption feature input file.')
@@ -57,27 +66,40 @@ def parse_input():
     return parser.parse_args()
 
 
-def validate_output_path(args):
-    if args.output is not None:
-        return args
-    reusable_input_name, _ = os.path.splitext(args.input)
-    args.output = reusable_input_name + DEFAULT_NIFTY_OUTPUT_EXTENSION
+def validate_input_path(args):
+    if "*" not in args.input:
+        args.input = [args.input]
+    else:
+        args.input = glob.glob(args.input)
     return args
 
 
-def validate_input(args):
-    if not os.path.isfile(args.input):
-        raise ValueError(f'Input "{args.input}" is not a file.')
-    if not os.access(args.input, os.R_OK):
-        raise ValueError(f'Input "{args.input}" is not readable.')
+def validate_output_path(args):
+    if args.output is not None:
+        return args
+    args.output = create_output_path(args.input)
+    return args
+
+
+def create_output_path(input_path):
+    reusable_input_name, _ = os.path.splitext(input_path)
+    return reusable_input_name + DEFAULT_NIFTY_OUTPUT_EXTENSION
+
+
+def validate_parameters(args):
+    for selected_input in args.input:
+        if not os.path.isfile(selected_input):
+            raise ValueError(f'Input "{selected_input}" is not a file.')
+        if not os.access(selected_input, os.R_OK):
+            raise ValueError(f'Input "{selected_input}" is not readable.')
 
     if args.type not in INPUT_TYPES:
         raise ValueError(f'Type "{args.type}" is not in list of valid input types {INPUT_TYPES}.')
 
-    if not os.access(os.path.dirname(args.output), os.W_OK):
-        raise ValueError(f'Directory of output "{args.input}" is not writable.')
-    if os.path.exists(args.output):
-        LOGGER.warning(f'Output {args.output} already exists - will get overwritten.')
+    # if not os.access(os.path.dirname(args.output), os.W_OK):
+    #     raise ValueError(f'Directory of output "{args.output}" is not writable.')
+    # if os.path.exists(args.output):
+    #     LOGGER.warning(f'Output {args.output} already exists - will get overwritten.')
 
     if args.features is None:
         args.features = FEATURE_PATH
@@ -88,6 +110,7 @@ def validate_input(args):
 
 
 def summarize_input_parameters(args):
+    # TODO: args.output has been (temporarily) removed
     s = f'''
     {'-'*40}
     # NIFTY INPUT PARAMETERS
@@ -96,7 +119,6 @@ def summarize_input_parameters(args):
     #\tX-Key: {args.xkey}
     #\tY-Key: {args.ykey}
     #\tMatching: {args.matching}
-    # Output: {args.output}
     # Features: {args.features}
     {'-'*40}
     '''

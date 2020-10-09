@@ -23,7 +23,7 @@ def load_spectrum(input_file, input_type, xkey=None, ykey=None):
     if input_type == 'NORM':
         return read_2d_norm_spectrum(input_file)
 
-    # TODO: add import for other input types, e.g.: 'NORM', 'ASCII'(?)
+    # TODO: add import for other input types, e.g.: 'ASCII'(?)
     raise ValueError(f'Type "{input_type}" is not in list of valid input types {INPUT_TYPES}.')
 
 
@@ -137,7 +137,6 @@ def match_spectrum_unit_to_features(xs, features):
         if features_min < xs_matched_min < features_max or features_min < xs_matched_max < features_max:
             LOGGER.info(f'The spectrum could be matched with the factor {f_unit}')
             return xs * f_unit
-    # TODO: mismatched xs will be returned if the values get to small
     raise ValueError(f'The spectrum could not be matched with the following factors: '
                      f'10**{list(f_unit_range)}')
 
