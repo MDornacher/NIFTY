@@ -29,7 +29,7 @@ def main():
         dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
 
         if args.ref is not None:
-            xs_ref, ys_ref = load_spectrum
+            xs_ref, ys_ref = load_spectrum(args.ref, args.type, args.xkey, args.ykey)
             config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed, xs_ref, ys_ref)
         else:
             config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed)
