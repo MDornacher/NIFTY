@@ -151,6 +151,8 @@ class PlotUI:
         if event.key == '-':
             self.config.increase_x_range()
             self.reset_plot()
+        if event.key == 'backspace':
+            self.delete_last_measurement()
         if event.key == ' ':
             print(f'Saving measurements to {self.output_file}')
             save_results(self.measurements.results, self.output_file)
@@ -158,6 +160,13 @@ class PlotUI:
                 print(k, v)
         if event.key == 'escape':
             plt.close()
+
+    def delete_last_measurement(self):
+        if self.measurements.results[str(self.config.selected_dib)]:
+            last_measurement = self.measurements.results[str(self.config.selected_dib)].pop()
+            print(f'Removed the measurement {last_measurement} for DIB {self.config.selected_dib}.')
+        else:
+            print(f'No measurements for DIB {self.config.selected_dib} found.')
 
 
 class PlotConfig:
