@@ -8,6 +8,7 @@ from nifty.io import save_results
 
 class PlotUI:
     def __init__(self, config, output_file, results=None):
+        # parse input
         self.config = config
         self.measurements = Measurements(self.config.dibs)
         if results is not None:
@@ -15,16 +16,22 @@ class PlotUI:
             self.validate_results()
         self.output_file = output_file
 
+        # initiate masks
+        self.mask = None
+        self.mask_ref = None
+
+        # create figure
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
         self.fig.canvas.set_window_title('NIFTY')
 
         self.reset_plot()
 
+        # define events
         self.cid = self.fig.canvas.mpl_connect('key_press_event', self.onpress)
         self.span_fit = SpanSelector(self.ax2, self.onselect_fit_range, 'horizontal', useblit=True,
-                                rectprops=dict(alpha=0.5, facecolor='yellow'))
+                                     rectprops=dict(alpha=0.5, facecolor='yellow'))
         self.span_ew = SpanSelector(self.ax3, self.onselect_ew_range, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.5, facecolor='yellow'))
+                                    rectprops=dict(alpha=0.5, facecolor='yellow'))
         plt.show()
 
     def validate_results(self):
@@ -37,8 +44,14 @@ class PlotUI:
         if dibs_test_list != results_test_list:
             raise ValueError(f'The list of dibs and results do not match.')
 
+    def calculate_masks(self):
+        self.mask = (self.config.xs > self.config.x_range_min) & (self.config.xs < self.config.x_range_max)
+        if self.config.ref_data:
+            self.mask_ref = (self.config.xs_ref > self.config.x_range_min) & (self.config.xs_ref < self.config.x_range_max)
+
     def reset_plot(self):
         self.config.reset_fit()
+        self.calculate_masks()
 
         self.reset_plot_top()
         self.reset_plot_middle()
@@ -49,6 +62,7 @@ class PlotUI:
     def reset_plot_top(self):
         self.ax1.clear()
         self.ax1.set_title('Full Spectrum')
+        self.ax1.grid()
         if self.config.ref_data:
             self.ax1.plot(self.config.xs_ref, self.config.ys_ref, '-', color='k', alpha=0.5)
         self.ax1.plot(self.config.xs, self.config.ys, '-', color='C0')
@@ -58,21 +72,38 @@ class PlotUI:
     def reset_plot_middle(self):
         self.ax2.clear()
         self.ax2.set_title('DIB Region')
-        self.ax2.set_xlim(self.config.selected_dib * (1 - self.config.x_range_factor),
-                          self.config.selected_dib * (1 + self.config.x_range_factor))
+        self.ax2.grid()
+
         if self.config.ref_data:
-            self.ax2.plot(self.config.xs_ref, self.config.ys_ref, '-', color='k', alpha=0.5)
-        self.ax2.plot(self.config.xs, self.config.ys, '-', color='C0')
+            self.ax2.plot(self.config.xs_ref[self.mask_ref],
+                          self.config.ys_ref[self.mask_ref],
+                          '-', color='k', alpha=0.5)
+
+        self.ax2.plot(self.config.xs[self.mask],
+                      self.config.ys[self.mask],
+                      '-', color='C0')
 
     def reset_plot_bottom(self):
         self.ax3.clear()
         self.ax3.set_title('Local Norm')
-        self.ax3.set_xlim(self.config.selected_dib * (1 - self.config.x_range_factor),
-                          self.config.selected_dib * (1 + self.config.x_range_factor))
-        self.ax3.set_ylim(1. - self.config.y_range_factor, 1.1)
+        self.ax3.grid()
+
         if self.config.ref_data:
-            self.ax3.plot(self.config.xs_ref, self.config.ys_ref, '-', color='k', alpha=0.5)
-        self.ax3.plot(self.config.xs, self.config.ys, '-', color='C0')
+            self.ax3.plot(self.config.xs_ref[self.mask_ref],
+                          self.config.ys_ref[self.mask_ref],
+                          '-', color='k', alpha=0.5)
+
+        if self.config.ys_norm.size > 0:
+            self.ax3.plot(self.config.xs[self.mask],
+                          self.config.ys_norm[self.mask],
+                          '-', color='C0')
+            self.ax3.plot([self.config.selected_dib] * 2,
+                          [self.config.ys_norm[self.mask].min(), self.config.ys_norm[self.mask].max()],
+                          'r-', alpha=0.5)
+        else:
+            self.ax3.plot(self.config.xs[self.mask],
+                          self.config.ys[self.mask],
+                          '-', color='C0')
 
     def onselect_fit_range(self, xmin, xmax):
         # get x and y values of selection
@@ -87,30 +118,24 @@ class PlotUI:
         self.config.xs_fit_data = np.append(thisx, self.config.xs_fit_data)
         self.config.ys_fit_data = np.append(thisy, self.config.ys_fit_data)
         # noinspection PyTupleAssignmentBalance
-        k, d = np.polyfit(self.config.xs_fit_data, self.config.ys_fit_data, 1)
-        self.config.ys_fit = [k * x + d for x in self.config.xs]
+        self.config.slope, self.config.intercept = np.polyfit(self.config.xs_fit_data, self.config.ys_fit_data, 1)
+        self.config.ys_fit = np.array([self.config.slope * x + self.config.intercept for x in self.config.xs])
         self.config.ys_norm = self.config.ys / self.config.ys_fit
 
-        # redraw everything
-        self.ax2.clear()
-        self.ax2.set_title('DIB Region')
-        self.ax2.set_xlim(self.config.selected_dib * (1 - self.config.x_range_factor),
-                          self.config.selected_dib * (1 + self.config.x_range_factor))
-        self.ax2.plot(self.config.xs, self.config.ys, '-', color='C0')
-        self.ax2.plot(self.config.xs, self.config.ys_fit, '-', color='k', alpha=0.5, label='k={:6.2f}'.format(k))
-        # ax2.plot(thisx, thisy, '-', color='C1', linewidth=2)
-        self.ax2.plot(self.config.xs_fit_data, self.config.ys_fit_data, 'o', color='C1', alpha=0.5)
+        # redraw relevant subplots
+        self.reset_plot_middle()
+        self.plot_fit_data()
         self.ax2.legend()
-
-        self.ax3.clear()
-        self.ax3.set_title('Local Norm')
-        self.ax3.set_xlim(self.config.selected_dib * (1 - self.config.x_range_factor),
-                          self.config.selected_dib * (1 + self.config.x_range_factor))
-        self.ax3.set_ylim(1. - self.config.y_range_factor, 1.1)
-        self.ax3.axhline(1, self.config.xs.min(), self.config.xs.max(), color='k', alpha=0.5)
-        self.ax3.plot(self.config.xs, self.config.ys_norm)
-
+        self.reset_plot_bottom()
         self.fig.canvas.draw()
+
+    def plot_fit_data(self):
+        self.ax2.plot(self.config.xs[self.mask],
+                      self.config.ys_fit[self.mask],
+                      '-', color='k', alpha=0.5, label='k={:6.6f}'.format(self.config.slope))
+        self.ax2.plot(self.config.xs_fit_data,
+                      self.config.ys_fit_data,
+                      'o', color='C1', alpha=0.5)
 
     def onselect_ew_range(self, xmin, xmax):
         # get x and y values of selection
@@ -122,18 +147,15 @@ class PlotUI:
         ew = sum(diff)
         self.measurements.results[str(self.config.selected_dib)].append(ew)
 
-        self.ax3.clear()
-        self.ax3.set_title('Local Norm')
-        self.ax3.set_xlim(self.config.dibs[self.config.selection] * (1 - self.config.x_range_factor),
-                          self.config.dibs[self.config.selection] * (1 + self.config.x_range_factor))
-        self.ax3.set_ylim(1. - self.config.y_range_factor, 1.1)
-        self.ax3.axhline(1, self.config.xs.min(), self.config.xs.max(), color='k', alpha=0.5)
-        self.ax3.plot(self.config.xs, self.config.ys_norm)
+        self.reset_plot_bottom()
+        self.plot_ew_data(indmin, indmax, ew)
+        self.ax3.legend()
+        self.fig.canvas.draw()
+
+    def plot_ew_data(self, indmin, indmax, ew):
         self.ax3.fill_between(self.config.xs, self.config.ys_norm, 1,
                               where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
                               color='green', alpha=0.5, label='EW={:6.6f}'.format(ew))
-        self.ax3.legend()
-        self.fig.canvas.draw()
 
     def onpress(self, event):
         print(event.key)
@@ -141,21 +163,26 @@ class PlotUI:
             self.reset_plot()
         if event.key == 'left':
             self.config.previous_dib()
+            self.config.update_x_range()
             self.reset_plot()
         if event.key == 'right':
             self.config.next_dib()
+            self.config.update_x_range()
             self.reset_plot()
-        if event.key == 'up':
-            self.config.increase_y_range()
-            self.reset_plot()
-        if event.key == 'down':
-            self.config.decrease_y_range()
-            self.reset_plot()
+        # TODO: this will be redundant
+        # if event.key == 'up':
+        #     self.config.increase_y_range()
+        #     self.reset_plot()
+        # if event.key == 'down':
+        #     self.config.decrease_y_range()
+        #     self.reset_plot()
         if event.key == '+':
             self.config.decrease_x_range()
+            self.config.update_x_range()
             self.reset_plot()
         if event.key == '-':
             self.config.increase_x_range()
+            self.config.update_x_range()
             self.reset_plot()
         if event.key == 'backspace':
             self.delete_last_measurement()
@@ -170,7 +197,8 @@ class PlotUI:
     def delete_last_measurement(self):
         if self.measurements.results[str(self.config.selected_dib)]:
             last_measurement = self.measurements.results[str(self.config.selected_dib)].pop()
-            print(f'Removed the measurement {last_measurement} for DIB {self.config.selected_dib}.')
+            print(f'Removed the measurement {last_measurement} for DIB {self.config.selected_dib}'
+                  f' - {len(self.measurements.results[str(self.config.selected_dib)])} remaining.')
         else:
             print(f'No measurements for DIB {self.config.selected_dib} found.')
 
@@ -194,6 +222,8 @@ class PlotConfig:
             self.ys_ref = ys_ref
 
         # parameter for norm
+        self.slope = None
+        self.intercept = None
         self.xs_fit_data = np.array([])
         self.ys_fit_data = np.array([])
         self.ys_fit = np.array([])
@@ -206,6 +236,16 @@ class PlotConfig:
         self.selected_dib = self.dibs[self.selection]
         self.x_range_factor = 0.1
         self.y_range_factor = 1.1
+
+        # derived parameters
+        self.x_range_min = None
+        self.x_range_max = None
+        self.update_x_range()
+
+    def update_x_range(self):
+        self.x_range_min = self.selected_dib * (1 - self.x_range_factor)
+        self.x_range_max = self.selected_dib * (1 + self.x_range_factor)
+        print(self.x_range_min, self.x_range_max)
 
     def create_spectrum(self, x_range=(100, 200), sigma_range=(1, 5), strength_range=(0, 1), number_of_values=300,
                         number_of_dibs=3, sn=10):
@@ -229,8 +269,11 @@ class PlotConfig:
             self.dibs.append(self.xs[number_of_values - dib_index])
             self.ys = self.ys - strength * gaussian[dib_index:dib_index + number_of_values]
         self.dibs.sort()
+        self.dibs = np.array(self.dibs)
 
     def reset_fit(self):
+        self.slope = None
+        self.intercept = None
         self.xs_fit_data = np.array([])
         self.ys_fit_data = np.array([])
         self.ys_fit = np.array([])

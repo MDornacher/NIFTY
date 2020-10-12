@@ -104,7 +104,7 @@ def load_features(input_file):
     if data_errors:
         LOGGER.warning(f'The following entries in feature input {input_file} could not be loaded: '
                        f'{data_errors}')
-    return data_final
+    return np.array(data_final)
 
 
 def trim_features(features, feature_min=None, feature_max=None):
@@ -122,7 +122,7 @@ def trim_features(features, feature_min=None, feature_max=None):
     if features_excluded:
         LOGGER.info(f'The number of features changed from {len(features)} to {len(features_trimmed)}. '
                     f'The following features have been excluded: {features_excluded}')
-    return features_trimmed
+    return np.array(features_trimmed)
 
 
 def match_spectrum_unit_to_features(xs, features):
