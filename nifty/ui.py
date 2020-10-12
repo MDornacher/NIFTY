@@ -171,7 +171,6 @@ class PlotUI:
                               color='green', alpha=0.5, label='EW={:6.6f}'.format(ew))
 
     def onpress(self, event):
-        print(event.key)
         if event.key == 'r':
             self.reset_plot()
         if event.key == 'left':
@@ -258,7 +257,6 @@ class PlotConfig:
     def update_x_range(self):
         self.x_range_min = self.selected_dib * (1 - self.x_range_factor)
         self.x_range_max = self.selected_dib * (1 + self.x_range_factor)
-        print(self.x_range_min, self.x_range_max)
 
     def create_spectrum(self, x_range=(100, 200), sigma_range=(1, 5), strength_range=(0, 1), number_of_values=300,
                         number_of_dibs=3, sn=10):
