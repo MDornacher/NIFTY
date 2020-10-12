@@ -68,6 +68,7 @@ class PlotUI:
         self.ax1.plot(self.config.xs, self.config.ys, '-', color='C0')
         self.ax1.plot(self.config.dibs, [1.1] * len(self.config.dibs), 'k|')
         self.ax1.plot(self.config.selected_dib, [1.1], 'rv')
+        self.ax1.axvspan(self.config.x_range_min, self.config.x_range_max, alpha=0.3, color='yellow')
 
     def reset_plot_middle(self):
         self.ax2.clear()
