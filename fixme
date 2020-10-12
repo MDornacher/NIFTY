@@ -1,0 +1,21 @@
+# happens with all launch_NIFTY_A_VIS.bat
+Traceback (most recent call last):
+  File "nifty\main.py", line 149, in <module>
+    main()
+  File "nifty\main.py", line 41, in main
+    xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
+  File "G:\NIFTY\nifty\io.py", line 82, in trim_spectrum
+    i_start = np.where(ys == ys_trimmed[0])[0][0]
+IndexError: index 0 is out of bounds for axis 0 with size 0
+
+# sometimes when running demo
+Traceback (most recent call last):
+  File "G:/NIFTY/nifty/main.py", line 149, in <module>
+    main()
+  File "G:/NIFTY/nifty/main.py", line 20, in main
+    config = PlotConfig()
+  File "G:\NIFTY\nifty\ui.py", line 226, in __init__
+    self.create_spectrum()
+  File "G:\NIFTY\nifty\ui.py", line 283, in create_spectrum
+    self.dibs.append(self.xs[number_of_values - dib_index])
+IndexError: index 300 is out of bounds for axis 0 with size 300
