@@ -49,24 +49,30 @@ class PlotUI:
     def reset_plot_top(self):
         self.ax1.clear()
         self.ax1.set_title('Full Spectrum')
-        self.ax1.plot(self.config.xs, self.config.ys, '-', color='C0')
+        if self.config.ref_data:
+            self.ax1.plot(self.config.xs_ref, self.config.ys_ref, '-', color='k', alpha=0.5)
+        self.ax1.plot(self.config.xs, self.config.ys, '-', color='k')
         self.ax1.plot(self.config.dibs, [1.1] * len(self.config.dibs), 'k|')
         self.ax1.plot(self.config.selected_dib, [1.1], 'rv')
 
     def reset_plot_middle(self):
         self.ax2.clear()
         self.ax2.set_title('DIB Region')
-        self.ax2.plot(self.config.xs, self.config.ys, '-', color='C0')
         self.ax2.set_xlim(self.config.selected_dib * (1 - self.config.x_range_factor),
                           self.config.selected_dib * (1 + self.config.x_range_factor))
+        if self.config.ref_data:
+            self.ax2.plot(self.config.xs_ref, self.config.ys_ref, '-', color='k', alpha=0.5)
+        self.ax2.plot(self.config.xs, self.config.ys, '-', color='C0')
 
     def reset_plot_bottom(self):
         self.ax3.clear()
         self.ax3.set_title('Local Norm')
-        self.ax3.plot(self.config.xs, self.config.ys, '-', color='C0')
         self.ax3.set_xlim(self.config.selected_dib * (1 - self.config.x_range_factor),
                           self.config.selected_dib * (1 + self.config.x_range_factor))
         self.ax3.set_ylim(1. - self.config.y_range_factor, 1.1)
+        if self.config.ref_data:
+            self.ax3.plot(self.config.xs_ref, self.config.ys_ref, '-', color='k', alpha=0.5)
+        self.ax3.plot(self.config.xs, self.config.ys, '-', color='C0')
 
     def onselect_fit_range(self, xmin, xmax):
         # get x and y values of selection
@@ -161,7 +167,7 @@ class PlotUI:
 
 
 class PlotConfig:
-    def __init__(self, xs=None, ys=None, dibs=None):
+    def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None):
         # parameter for full spectrum
         # TODO: distinguish between missing xs/ys and missing dibs
         if any((xs is None, ys is None, dibs is None)):
@@ -170,6 +176,13 @@ class PlotConfig:
             self.xs = xs
             self.ys = ys
             self.dibs = dibs
+
+        if xs_ref is None or ys_ref is None:
+            self.ref_data = False
+        else:
+            self.ref_data = True
+            self.xs_ref = xs_ref
+            self.ys_ref = ys_ref
 
         # parameter for norm
         self.xs_fit_data = np.array([])
