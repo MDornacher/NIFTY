@@ -51,7 +51,7 @@ class PlotUI:
         self.ax1.set_title('Full Spectrum')
         if self.config.ref_data:
             self.ax1.plot(self.config.xs_ref, self.config.ys_ref, '-', color='k', alpha=0.5)
-        self.ax1.plot(self.config.xs, self.config.ys, '-', color='k')
+        self.ax1.plot(self.config.xs, self.config.ys, '-', color='C0')
         self.ax1.plot(self.config.dibs, [1.1] * len(self.config.dibs), 'k|')
         self.ax1.plot(self.config.selected_dib, [1.1], 'rv')
 
