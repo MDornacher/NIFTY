@@ -116,6 +116,7 @@ class PlotUI:
             self.ax3.plot([self.config.selected_dib] * 2,
                           [self.config.ys[self.mask].min(), self.config.ys[self.mask].max()],
                           'r-', alpha=0.5)
+            self.ax3.axvspan(self.config.x_range_min, self.config.x_range_max, alpha=0.15, color='black')
 
     def onselect_fit_range(self, xmin, xmax):
         # get x and y values of selection
