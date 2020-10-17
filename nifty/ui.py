@@ -28,7 +28,7 @@ class PlotUI:
         self.reset_plot()
 
         # define events
-        self.cid = self.fig.canvas.mpl_connect('key_press_event', self.onpress)
+        self.cid = self.fig.canvas.mpl_connect('key_press_event', self.on_press)
         self.span_fit = SpanSelector(self.ax2, self.onselect_fit_range, 'horizontal', useblit=True,
                                      rectprops=dict(alpha=0.5, facecolor='yellow'))
         self.span_ew = SpanSelector(self.ax3, self.onselect_ew_range, 'horizontal', useblit=True,
@@ -174,7 +174,7 @@ class PlotUI:
             ax.axvline(dib, color='red', alpha=0.2)
         ax.axvline(self.config.selected_dib, color='red', alpha=0.5)
 
-    def onpress(self, event):
+    def on_press(self, event):
         if event.key == 'r':
             self.reset_plot()
         if event.key == 'left':
@@ -204,8 +204,12 @@ class PlotUI:
         if event.key == ' ':
             print(f'Saving measurements to {self.output_file}')
             save_results(self.measurements.results, self.output_file)
-            for k, v in self.measurements.results.items():
-                print(k, v)
+            for dib in self.config.dibs:
+                print(dib, self.measurements.results[str(dib)], self.measurements.notes[str(dib)])
+        if event.key == 'm':
+            self.toggle_measurement_mark()
+        if event.key == 'n':
+            self.add_note_to_measurement()
         if event.key == 'escape':
             plt.close('all')
 
@@ -216,6 +220,19 @@ class PlotUI:
                   f' - {len(self.measurements.results[str(self.config.selected_dib)])} remaining.')
         else:
             print(f'No measurements for DIB {self.config.selected_dib} found.')
+
+    def add_note_to_measurement(self):
+        note = input(f"Add note to feature {self.config.selected_dib}: ").strip()
+        self.measurements.notes[str(self.config.selected_dib)] += note + "\n"
+        print(f"Full note:\n{self.measurements.notes[str(self.config.selected_dib)]}")
+
+    def toggle_measurement_mark(self):
+        if self.measurements.marked[str(self.config.selected_dib)]:
+            print(f"Removed mark from feature {self.config.selected_dib}.")
+            self.measurements.marked[str(self.config.selected_dib)] = False
+        else:
+            print(f"Marked feature {self.config.selected_dib}.")
+            self.measurements.marked[str(self.config.selected_dib)] = True
 
 
 class PlotConfig:
@@ -262,7 +279,7 @@ class PlotConfig:
         self.x_range_max = self.selected_dib * (1 + self.x_range_factor)
 
     def create_spectrum(self, x_range=(100, 200), sigma_range=(1, 5), strength_range=(0, 1), number_of_values=300,
-                        number_of_dibs=30, sn=10):
+                        number_of_dibs=3, sn=10):
         if x_range is None:
             x_range_min, x_range_max = (100, 500)
         else:
@@ -328,7 +345,10 @@ class PlotConfig:
         self.xs_ref -= step_size
 
 
-
 class Measurements:
+    # TODO: instead of using dicts find a cleaner way of storing measurements, maybe don't use a class at all
     def __init__(self, dibs):
         self.results = {str(dib): [] for dib in dibs}
+        self.notes = {str(dib): "" for dib in dibs}
+        self.marked = {str(dib): False for dib in dibs}
+        # TODO: maybe also include timestamps for results, notes (maybe even marked)
