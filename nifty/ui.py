@@ -185,13 +185,12 @@ class PlotUI:
             self.config.next_dib()
             self.config.update_x_range()
             self.reset_plot()
-        # TODO: this will be redundant
-        # if event.key == 'up':
-        #     self.config.increase_y_range()
-        #     self.reset_plot()
-        # if event.key == 'down':
-        #     self.config.decrease_y_range()
-        #     self.reset_plot()
+        if event.key == 'up':
+            self.config.shift_ref_data_up()
+            self.reset_plot()
+        if event.key == 'down':
+            self.config.shift_ref_data_down()
+            self.reset_plot()
         if event.key == '+':
             self.config.decrease_x_range()
             self.config.update_x_range()
@@ -313,6 +312,21 @@ class PlotConfig:
 
     def decrease_y_range(self):
         self.y_range_factor -= 0.1
+
+    def shift_ref_data_up(self):
+        if not self.ref_data:
+            print("No ref data available for shifting.")
+            return
+        step_size = self.xs_ref[1] - self.xs_ref[0]
+        self.xs_ref += step_size
+
+    def shift_ref_data_down(self):
+        if not self.ref_data:
+            print("No ref data available for shifting.")
+            return
+        step_size = self.xs_ref[1] - self.xs_ref[0]
+        self.xs_ref -= step_size
+
 
 
 class Measurements:
