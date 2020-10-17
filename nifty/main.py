@@ -43,6 +43,8 @@ def main():
 
             if args.ref is not None:
                 xs_ref, ys_ref = load_spectrum(args.ref, args.type, args.xkey, args.ykey)
+                if args.matching:
+                    xs_ref = match_spectrum_unit_to_features(xs_ref, dibs)
                 xs_ref_trimmed, ys_ref_trimmed = trim_spectrum(xs_ref, ys_ref)
                 config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed, xs_ref_trimmed, ys_ref_trimmed)
             else:
