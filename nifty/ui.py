@@ -19,6 +19,7 @@ class PlotUI:
         # initiate masks
         self.mask = None
         self.mask_ref = None
+        self.mask_dibs = None
 
         # create figure
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
@@ -48,6 +49,7 @@ class PlotUI:
         self.mask = (self.config.xs > self.config.x_range_min) & (self.config.xs < self.config.x_range_max)
         if self.config.ref_data:
             self.mask_ref = (self.config.xs_ref > self.config.x_range_min) & (self.config.xs_ref < self.config.x_range_max)
+        self.mask_dibs = (self.config.dibs > self.config.x_range_min) & (self.config.dibs < self.config.x_range_max)
 
     def reset_plot(self):
         self.config.reset_fit()
@@ -88,9 +90,7 @@ class PlotUI:
                       self.config.ys[self.mask],
                       '-', color='C0')
 
-        self.ax2.plot([self.config.selected_dib] * 2,
-                      [self.config.ys[self.mask].min(), self.config.ys[self.mask].max()],
-                      'r-', alpha=0.5)
+        self.plot_dibs(self.ax2)
 
     def reset_plot_bottom(self):
         self.ax3.clear()
@@ -106,17 +106,16 @@ class PlotUI:
             self.ax3.plot(self.config.xs[self.mask],
                           self.config.ys_norm[self.mask],
                           '-', color='C0')
-            self.ax3.plot([self.config.selected_dib] * 2,
-                          [self.config.ys_norm[self.mask].min(), self.config.ys_norm[self.mask].max()],
-                          'r-', alpha=0.5)
+
         else:
             self.ax3.plot(self.config.xs[self.mask],
                           self.config.ys[self.mask],
                           '-', color='C0')
-            self.ax3.plot([self.config.selected_dib] * 2,
-                          [self.config.ys[self.mask].min(), self.config.ys[self.mask].max()],
-                          'r-', alpha=0.5)
+            # "block" third plot if no fit
             self.ax3.axvspan(self.config.x_range_min, self.config.x_range_max, alpha=0.15, color='black')
+            # self.ax3.text(0.5, 0.5, 'BLOCKED', fontsize=32, horizontalalignment='center', verticalalignment='center', transform=self.ax3.transAxes)
+
+        self.plot_dibs(self.ax3)
 
     def onselect_fit_range(self, xmin, xmax):
         # get x and y values of selection
@@ -170,6 +169,11 @@ class PlotUI:
                               where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
                               color='green', alpha=0.5, label='EW={:6.6f}'.format(ew))
 
+    def plot_dibs(self, ax):
+        for dib in self.config.dibs[self.mask_dibs]:
+            ax.axvline(dib, color='red', alpha=0.2)
+        ax.axvline(self.config.selected_dib, color='red', alpha=0.5)
+
     def onpress(self, event):
         if event.key == 'r':
             self.reset_plot()
@@ -218,7 +222,7 @@ class PlotUI:
 class PlotConfig:
     def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None):
         # parameter for full spectrum
-        # TODO: distinguish between missing xs/ys and missing dibs
+        # TODO: distinguish between missing xs/ys and missing dibs_selection
         if any((xs is None, ys is None, dibs is None)):
             self.create_spectrum()
         else:
@@ -246,7 +250,7 @@ class PlotConfig:
         # additional parameters
         self.selection = 0
         self.selected_dib = self.dibs[self.selection]
-        self.x_range_factor = 0.1
+        self.x_range_factor = 0.01
         self.y_range_factor = 1.1
 
         # derived parameters
@@ -259,7 +263,7 @@ class PlotConfig:
         self.x_range_max = self.selected_dib * (1 + self.x_range_factor)
 
     def create_spectrum(self, x_range=(100, 200), sigma_range=(1, 5), strength_range=(0, 1), number_of_values=300,
-                        number_of_dibs=3, sn=10):
+                        number_of_dibs=30, sn=10):
         if x_range is None:
             x_range_min, x_range_max = (100, 500)
         else:
@@ -299,10 +303,10 @@ class PlotConfig:
         self.selected_dib = self.dibs[self.selection]
 
     def increase_x_range(self):
-        self.x_range_factor += 0.01
+        self.x_range_factor *= 1.1
 
     def decrease_x_range(self):
-        self.x_range_factor -= 0.01
+        self.x_range_factor *= 0.9
 
     def increase_y_range(self):
         self.y_range_factor += 0.1
