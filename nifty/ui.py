@@ -296,9 +296,9 @@ class PlotConfig:
             sigma = sigma_min + np.random.rand() * sigma_max
             strength = strength_min + np.random.rand() * strength_max
             gaussian = signal.gaussian(number_of_values * 2, sigma)
-            dib_index = int(np.random.rand() * number_of_values) - 1
-            self.dibs.append(self.xs[number_of_values - dib_index])
-            self.ys = self.ys - strength * gaussian[dib_index:dib_index + number_of_values]
+            dib_index = int(np.random.rand() * number_of_values)
+            self.dibs.append(self.xs[dib_index])
+            self.ys = self.ys - strength * gaussian[number_of_values - dib_index:2*number_of_values - dib_index]
         self.dibs.sort()
         self.dibs = np.array(self.dibs)
 
