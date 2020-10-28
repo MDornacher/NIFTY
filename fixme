@@ -1,9 +1,0 @@
-# happens with all launch_NIFTY_A_VIS.bat
-Traceback (most recent call last):
-  File "nifty\main.py", line 149, in <module>
-    main()
-  File "nifty\main.py", line 41, in main
-    xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
-  File "G:\NIFTY\nifty\io.py", line 82, in trim_spectrum
-    i_start = np.where(ys == ys_trimmed[0])[0][0]
-IndexError: index 0 is out of bounds for axis 0 with size 0

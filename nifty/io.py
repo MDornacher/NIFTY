@@ -78,7 +78,7 @@ def read_2d_norm_spectrum(input_file):
 
 
 def trim_spectrum(xs, ys):
-    ys_trimmed = np.trim_zeros(ys)
+    ys_trimmed = np.trim_zeros(np.nan_to_num(ys))
     i_start = np.where(ys == ys_trimmed[0])[0][0]
     i_end = i_start + len(ys_trimmed)
     xs_trimmed = xs[i_start:i_end]
