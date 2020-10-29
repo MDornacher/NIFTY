@@ -23,6 +23,7 @@ class PlotUI:
         # create figure
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
         self.fig.canvas.set_window_title('NIFTY')
+        plt.get_current_fig_manager().window.wm_iconbitmap("icon.ico")
 
         self.reset_plot()
 
