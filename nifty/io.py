@@ -1,9 +1,8 @@
 import json
 import logging
 
-from astropy.io import fits
 import numpy as np
-
+from astropy.io import fits
 
 LOGGER = logging.getLogger(__name__)
 INPUT_TYPES = ['FITS', 'NORM']

@@ -3,7 +3,6 @@ import logging
 import numpy as np
 from scipy import signal
 
-
 LOGGER = logging.getLogger(__name__)
 
 

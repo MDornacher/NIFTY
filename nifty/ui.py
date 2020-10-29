@@ -5,8 +5,8 @@ from matplotlib import pyplot as plt
 from matplotlib.widgets import SpanSelector
 
 from nifty.io import save_measurements
-from nifty.prints import print_navigation_keyboard_shortcuts, print_measurements
-
+from nifty.prints import (print_measurements,
+                          print_navigation_keyboard_shortcuts)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -264,4 +264,3 @@ class PlotUI:
         else:
             print(f"Marked feature {self.config.selected_dib}.")
             self.config.measurements[str(self.config.selected_dib)]["marked"] = True
-
