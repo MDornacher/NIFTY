@@ -4,7 +4,8 @@ import logging
 import os
 import sys
 
-from nifty.ui import PlotUI, PlotConfig
+from nifty.config import PlotConfig
+from nifty.ui import PlotUI
 from nifty.io import INPUT_TYPES, load_spectrum, load_features, load_measurements, \
     trim_spectrum, trim_features, match_spectrum_unit_to_features, load_stellar_lines
 from nifty.prints import print_banner, print_demo_message, print_summary_of_input_parameters
