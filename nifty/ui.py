@@ -17,9 +17,11 @@ class PlotUI:
         self.output_file = output_file
 
         # initiate masks
+        # TODO: maybe self.masks should be a dictionary and should be in config not in the main class
         self.mask = None
         self.mask_ref = None
         self.mask_dibs = None
+        self.mask_stellar_lines = None
 
         # create figure
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
@@ -46,10 +48,16 @@ class PlotUI:
             raise ValueError(f'The list of dibs and results do not match.')
 
     def calculate_masks(self):
-        self.mask = (self.config.xs > self.config.x_range_min) & (self.config.xs < self.config.x_range_max)
+        self.mask = (self.config.xs > self.config.x_range_min) & \
+                    (self.config.xs < self.config.x_range_max)
         if self.config.ref_data:
-            self.mask_ref = (self.config.xs_ref > self.config.x_range_min) & (self.config.xs_ref < self.config.x_range_max)
-        self.mask_dibs = (self.config.dibs > self.config.x_range_min) & (self.config.dibs < self.config.x_range_max)
+            self.mask_ref = (self.config.xs_ref > self.config.x_range_min) & \
+                            (self.config.xs_ref < self.config.x_range_max)
+        self.mask_dibs = (self.config.dibs > self.config.x_range_min) & \
+                         (self.config.dibs < self.config.x_range_max)
+        if self.config.stellar_lines is not None:
+            self.mask_stellar_lines = (self.config.stellar_lines > self.config.x_range_min) & \
+                                      (self.config.stellar_lines < self.config.x_range_max)
 
     def reset_plot(self):
         self.config.reset_fit()
@@ -92,6 +100,9 @@ class PlotUI:
 
         self.plot_dibs(self.ax2)
 
+        if self.config.stellar_lines is not None:
+            self.plot_stellar_lines(self.ax2)
+
     def reset_plot_bottom(self):
         self.ax3.clear()
         self.ax3.set_title('Local Norm')
@@ -116,6 +127,9 @@ class PlotUI:
             # self.ax3.text(0.5, 0.5, 'BLOCKED', fontsize=32, horizontalalignment='center', verticalalignment='center', transform=self.ax3.transAxes)
 
         self.plot_dibs(self.ax3)
+
+        if self.config.stellar_lines is not None:
+            self.plot_stellar_lines(self.ax3)
 
     def onselect_fit_range(self, xmin, xmax):
         # get x and y values of selection
@@ -167,14 +181,20 @@ class PlotUI:
     def plot_ew_data(self, indmin, indmax, ew):
         self.ax3.fill_between(self.config.xs, self.config.ys_norm, 1,
                               where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
-                              color='green', alpha=0.5, label='EW={:6.6f}'.format(ew))
+                              color='C2', alpha=0.5, label='EW={:6.6f}'.format(ew))
 
     def plot_dibs(self, ax):
         for dib in self.config.dibs[self.mask_dibs]:
-            ax.axvline(dib, color='red', alpha=0.2)
-        ax.axvline(self.config.selected_dib, color='red', alpha=0.5)
+            ax.axvline(dib, color='C3', alpha=0.3)
+        ax.axvline(self.config.selected_dib, color='C3', alpha=0.5)
+
+    def plot_stellar_lines(self, ax):
+        for stellar_line in self.config.stellar_lines[self.mask_stellar_lines]:
+            ax.axvline(stellar_line, color='C0', alpha=0.3)
 
     def on_press(self, event):
+        if event.key == 'h':
+            self.print_key_events_help()
         if event.key == 'r':
             self.reset_plot()
         if event.key == 'left':
@@ -190,6 +210,12 @@ class PlotUI:
             self.reset_plot()
         if event.key == 'down':
             self.config.shift_ref_data_down()
+            self.reset_plot()
+        if event.key == 'alt+up':
+            self.config.shift_spectral_lines_up()
+            self.reset_plot()
+        if event.key == 'alt+down':
+            self.config.shift_spectral_lines_down()
             self.reset_plot()
         if event.key == '+':
             self.config.decrease_x_range()
@@ -212,6 +238,9 @@ class PlotUI:
             self.add_note_to_measurement()
         if event.key == 'escape':
             plt.close('all')
+
+    def print_key_events_help(self):
+        print("*List all key events here*")
 
     def delete_last_measurement(self):
         if self.measurements.results[str(self.config.selected_dib)]:
@@ -236,7 +265,7 @@ class PlotUI:
 
 
 class PlotConfig:
-    def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None):
+    def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None, stellar_lines=None):
         # parameter for full spectrum
         # TODO: distinguish between missing xs/ys and missing dibs_selection
         if any((xs is None, ys is None, dibs is None)):
@@ -245,6 +274,7 @@ class PlotConfig:
             self.xs = xs
             self.ys = ys
             self.dibs = dibs
+            self.stellar_lines = stellar_lines
 
         if xs_ref is None or ys_ref is None:
             self.ref_data = False
@@ -341,8 +371,22 @@ class PlotConfig:
         if not self.ref_data:
             print("No ref data available for shifting.")
             return
-        step_size = self.xs_ref[1] - self.xs_ref[0]
-        self.xs_ref -= step_size
+        step_size = self.xs[1] - self.xs[0]
+        self.stellar_lines -= step_size
+
+    def shift_spectral_lines_up(self):
+        if not self.ref_data:
+            print("No stellar lines available for shifting.")
+            return
+        step_size = self.xs[1] - self.xs[0]
+        self.stellar_lines += step_size
+
+    def shift_spectral_lines_down(self):
+        if not self.ref_data:
+            print("No stellar lines available for shifting.")
+            return
+        step_size = self.xs[1] - self.xs[0]
+        self.stellar_lines -= step_size
 
 
 class Measurements:

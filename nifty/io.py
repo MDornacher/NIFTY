@@ -152,3 +152,10 @@ def save_results(results, output_file):
     # TODO: include all measurement attributes
     with open(output_file, 'w') as f:
         json.dump(results, f)
+
+
+def load_stellar_lines(input_files):
+    stellar_lines = np.array([])
+    for input_file in input_files:
+        stellar_lines = np.append(stellar_lines, load_features(input_file))
+    return stellar_lines

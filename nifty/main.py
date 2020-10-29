@@ -6,7 +6,7 @@ import sys
 
 from nifty.ui import PlotUI, PlotConfig
 from nifty.io import INPUT_TYPES, load_spectrum, load_features, load_results, \
-    trim_spectrum, trim_features, match_spectrum_unit_to_features
+    trim_spectrum, trim_features, match_spectrum_unit_to_features, load_stellar_lines
 
 
 LOGGER = logging.getLogger(__name__)
@@ -46,9 +46,17 @@ def main():
                 if args.matching:
                     xs_ref = match_spectrum_unit_to_features(xs_ref, dibs)
                 xs_ref_trimmed, ys_ref_trimmed = trim_spectrum(xs_ref, ys_ref)
-                config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed, xs_ref_trimmed, ys_ref_trimmed)
             else:
-                config = PlotConfig(xs_trimmed, ys_trimmed, dibs_trimmed)
+                xs_ref_trimmed, ys_ref_trimmed = None, None
+
+            if args.stellar is not None:
+                stellar_lines = load_stellar_lines(args.stellar)
+            else:
+                stellar_lines = None
+
+            config = PlotConfig(xs=xs_trimmed, ys=ys_trimmed, dibs=dibs_trimmed,
+                                xs_ref=xs_ref_trimmed, ys_ref=ys_ref_trimmed,
+                                stellar_lines=stellar_lines)
 
             output_file = create_output_path(selected_input)
             if os.path.isfile(output_file):
@@ -57,7 +65,8 @@ def main():
                 results = None
 
             PlotUI(config, output_file, results)
-            # TODO:  plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
+            # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
+            # TODO: additional console for LOGGER
 
 
 def parse_input():
@@ -72,6 +81,9 @@ def parse_input():
     parser.add_argument('-m', '--matching', help='Match unit of measurement of spectrum to absorption features.',
                         action='store_true')
     parser.add_argument('--ref', required=False, default=None, help='Specify reference spectrum.')
+    parser.add_argument('--stellar', required=False, default=None, nargs="+",
+                        help='Specify input file(s) of stellar reference lines')
+    # TODO: force overwrite parameter like '-F'
     return parser.parse_args()
 
 
