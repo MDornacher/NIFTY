@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from matplotlib.widgets import SpanSelector
 
 from nifty.io import save_results
+from nifty.prints import print_navigation_keyboard_shortcuts
 
 
 class PlotUI:
@@ -194,53 +195,66 @@ class PlotUI:
 
     def on_press(self, event):
         if event.key == 'h':
-            self.print_key_events_help()
+            print_navigation_keyboard_shortcuts()
+            return
         if event.key == 'r':
             self.reset_plot()
+            return
         if event.key == 'left':
             self.config.previous_dib()
             self.config.update_x_range()
             self.reset_plot()
+            return
         if event.key == 'right':
             self.config.next_dib()
             self.config.update_x_range()
             self.reset_plot()
+            return
         if event.key == 'up':
             self.config.shift_ref_data_up()
             self.reset_plot()
+            return
         if event.key == 'down':
             self.config.shift_ref_data_down()
             self.reset_plot()
+            return
         if event.key == 'alt+up':
             self.config.shift_spectral_lines_up()
             self.reset_plot()
+            return
         if event.key == 'alt+down':
             self.config.shift_spectral_lines_down()
             self.reset_plot()
+            return
         if event.key == '+':
             self.config.decrease_x_range()
             self.config.update_x_range()
             self.reset_plot()
+            return
         if event.key == '-':
             self.config.increase_x_range()
             self.config.update_x_range()
             self.reset_plot()
+            return
+        if event.key == 'm':
+            self.toggle_measurement_mark()
+            return
+        if event.key == 'n':
+            self.add_note_to_measurement()
+            return
         if event.key == 'backspace':
             self.delete_last_measurement()
+            return
         if event.key == ' ':
             print(f'Saving measurements to {self.output_file}')
             save_results(self.measurements.results, self.output_file)
             for dib in self.config.dibs:
                 print(dib, self.measurements.results[str(dib)], self.measurements.notes[str(dib)])
-        if event.key == 'm':
-            self.toggle_measurement_mark()
-        if event.key == 'n':
-            self.add_note_to_measurement()
+            return
         if event.key == 'escape':
+            # TODO: 'Process finished with exit code -1073741819 (0xC0000005)' but closing it with X button works fine
             plt.close('all')
-
-    def print_key_events_help(self):
-        print("*List all key events here*")
+        print("Unrecognized keyboard shortcuts. Press 'h' for full list of shortcuts.")
 
     def delete_last_measurement(self):
         if self.measurements.results[str(self.config.selected_dib)]:
@@ -274,7 +288,8 @@ class PlotConfig:
             self.xs = xs
             self.ys = ys
             self.dibs = dibs
-            self.stellar_lines = stellar_lines
+
+        self.stellar_lines = stellar_lines
 
         if xs_ref is None or ys_ref is None:
             self.ref_data = False

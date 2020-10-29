@@ -72,7 +72,7 @@ def read_2d_norm_spectrum(input_file):
                 data_errors.append(line)
 
     if data_errors:
-        LOGGER.warning(f'The following entries in input {input_file} could not be loaded: '
+        LOGGER.warning(f'The following entries in input "{input_file}" could not be loaded: '
                        f'{data_errors}')
     return np.array(xs), np.array(ys)
 
@@ -102,7 +102,7 @@ def load_features(input_file):
             data_errors.append(entry)
 
     if data_errors:
-        LOGGER.warning(f'The following entries in feature input {input_file} could not be loaded: '
+        LOGGER.warning(f'The following entries in feature input "{input_file}" could not be loaded: '
                        f'{data_errors}')
     return np.array(data_final)
 

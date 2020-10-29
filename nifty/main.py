@@ -7,6 +7,7 @@ import sys
 from nifty.ui import PlotUI, PlotConfig
 from nifty.io import INPUT_TYPES, load_spectrum, load_features, load_results, \
     trim_spectrum, trim_features, match_spectrum_unit_to_features, load_stellar_lines
+from nifty.prints import print_banner, print_demo_message, print_summary_of_input_parameters
 
 
 LOGGER = logging.getLogger(__name__)
@@ -15,66 +16,74 @@ DEFAULT_NIFTY_OUTPUT_EXTENSION = '_nifty.json'
 
 
 def main():
+    print_banner()
     if len(sys.argv) == 1:
-        print_demo_message()
-        config = PlotConfig()
-        results = None
-        output_file = "demo_measurements.json"
-        PlotUI(config, output_file, results)
-
+        demo_mode()
     else:
-        args = parse_input()
+        measurement_mode()
 
-        args = validate_input_path(args)
-        # args = validate_output_path(args)  # TODO: need to be reworked for multi file input
 
-        validate_parameters(args)
-        summarize_input_parameters(args)
+def demo_mode():
+    print_demo_message()
+    config = PlotConfig()
+    results = None
+    output_file = "demo_measurements.json"
+    PlotUI(config, output_file, results)
 
-        dibs = load_features(args.features)
 
-        for selected_input in args.input:
-            xs, ys = load_spectrum(selected_input, args.type, args.xkey, args.ykey)
+def measurement_mode():
+    args = parse_input()
+    args = resolve_input_paths(args)
+    validate_parameters(args)
+    print_summary_of_input_parameters(args)
+
+    # initialize static parameters
+    dibs = load_features(args.features)
+    if args.stellar is not None:
+        stellar_lines = load_stellar_lines(args.stellar)
+    else:
+        stellar_lines = None
+
+    for selected_input in args.input:
+        if args.output is None:
+            args.output = create_output_path(selected_input)
+
+        xs, ys = load_spectrum(selected_input, args.type, args.xkey, args.ykey)
+        if args.matching:
+            xs = match_spectrum_unit_to_features(xs, dibs)
+
+        # remove leading and trailing zeros from spectrum and use new min/max to trim features
+        xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
+        dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
+
+        # matching procedure for the reference spectrum (if available)
+        if args.ref is not None:
+            xs_ref, ys_ref = load_spectrum(args.ref, args.type, args.xkey, args.ykey)
             if args.matching:
-                xs = match_spectrum_unit_to_features(xs, dibs)
+                xs_ref = match_spectrum_unit_to_features(xs_ref, dibs)
+            xs_ref_trimmed, ys_ref_trimmed = trim_spectrum(xs_ref, ys_ref)
+        else:
+            xs_ref_trimmed, ys_ref_trimmed = None, None
 
-            xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
-            dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
+        config = PlotConfig(xs=xs_trimmed, ys=ys_trimmed, dibs=dibs_trimmed,
+                            xs_ref=xs_ref_trimmed, ys_ref=ys_ref_trimmed,
+                            stellar_lines=stellar_lines)
 
-            if args.ref is not None:
-                xs_ref, ys_ref = load_spectrum(args.ref, args.type, args.xkey, args.ykey)
-                if args.matching:
-                    xs_ref = match_spectrum_unit_to_features(xs_ref, dibs)
-                xs_ref_trimmed, ys_ref_trimmed = trim_spectrum(xs_ref, ys_ref)
-            else:
-                xs_ref_trimmed, ys_ref_trimmed = None, None
+        if os.path.isfile(args.output):
+            results = load_results(args.output)
+        else:
+            results = None
 
-            if args.stellar is not None:
-                stellar_lines = load_stellar_lines(args.stellar)
-            else:
-                stellar_lines = None
-
-            config = PlotConfig(xs=xs_trimmed, ys=ys_trimmed, dibs=dibs_trimmed,
-                                xs_ref=xs_ref_trimmed, ys_ref=ys_ref_trimmed,
-                                stellar_lines=stellar_lines)
-
-            output_file = create_output_path(selected_input)
-            if os.path.isfile(output_file):
-                results = load_results(output_file)
-            else:
-                results = None
-
-            PlotUI(config, output_file, results)
-            # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
-            # TODO: additional console for LOGGER
+        PlotUI(config, args.output, results)
+        # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
+        # TODO: additional console for LOGGER
 
 
 def parse_input():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', required=True, help='Specify spectrum input file.')
     parser.add_argument('-t', '--type', required=True, type=str.upper, help='Specify type of input file.')
-    # parser.add_argument('-o', '--output', default=None, help='Specify the output file.')
-    # TODO: need to be reworked for multi file input
+    parser.add_argument('-o', '--output', default=None, help='Specify the output file.')
     parser.add_argument('--xkey', required=False, default=None, help='Specify key of x values in input file.')
     parser.add_argument('--ykey', required=False, default=None, help='Specify key of y values in input file.')
     parser.add_argument('-f', '--features', default=None, help='Specify absorption feature input file.')
@@ -87,18 +96,13 @@ def parse_input():
     return parser.parse_args()
 
 
-def validate_input_path(args):
+def resolve_input_paths(args):
     if "*" not in args.input:
         args.input = [args.input]
     else:
         args.input = glob.glob(args.input)
-    return args
-
-
-def validate_output_path(args):
-    if args.output is not None:
-        return args
-    args.output = create_output_path(args.input)
+        if not args.input:
+            raise ValueError(f'No files found while resolving input {args.input}')
     return args
 
 
@@ -117,10 +121,15 @@ def validate_parameters(args):
     if args.type not in INPUT_TYPES:
         raise ValueError(f'Type "{args.type}" is not in list of valid input types {INPUT_TYPES}.')
 
-    # if not os.access(os.path.dirname(args.output), os.W_OK):
-    #     raise ValueError(f'Directory of output "{args.output}" is not writable.')
-    # if os.path.exists(args.output):
-    #     LOGGER.warning(f'Output {args.output} already exists - will get overwritten.')
+    if args.output is not None:
+        if len(args.input) > 1:
+            LOGGER.warning('Output file can not be specified when input is multiple files. '
+                           'Defaulting to automated name for output files.')
+            args.output = None
+        if not os.access(os.path.dirname(args.output), os.W_OK):
+            raise ValueError(f'Directory of output "{args.output}" is not writable.')
+        if os.path.exists(args.output):
+            LOGGER.warning(f'Output {args.output} already exists - will get overwritten.')
 
     if args.features is None:
         args.features = FEATURE_PATH
@@ -128,33 +137,6 @@ def validate_parameters(args):
         raise ValueError(f'Input "{args.features}" is not a file.')
     if not os.access(args.features, os.R_OK):
         raise ValueError(f'Input "{args.features}" is not readable.')
-
-
-def summarize_input_parameters(args):
-    # TODO: args.output has been (temporarily) removed
-    s = f'''
-    {'-'*40}
-    # NIFTY INPUT PARAMETERS
-    # Input: {args.input}
-    #\tType: {args.type}
-    #\tX-Key: {args.xkey}
-    #\tY-Key: {args.ykey}
-    #\tMatching: {args.matching}
-    # Features: {args.features}
-    {'-'*40}
-    '''
-    print(s)
-
-
-def print_demo_message():
-    s = f'''
-    {'-'*40}
-    # NIFTY DEMO MODE
-    # Working with synthetic spectrum.
-    # Start with "-h" to get available options.
-    {'-'*40}
-    '''
-    print(s)
 
 
 if __name__ == '__main__':
