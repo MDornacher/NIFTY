@@ -131,28 +131,28 @@ class PlotConfig:
 
     def shift_ref_data_up(self):
         if not self.ref_data:
-            print("No ref data available for shifting.")
+            LOGGER.info("No ref data available for shifting.")
             return
         step_size = self.xs_ref[1] - self.xs_ref[0]
         self.xs_ref += step_size
 
     def shift_ref_data_down(self):
         if not self.ref_data:
-            print("No ref data available for shifting.")
+            LOGGER.info("No ref data available for shifting.")
             return
         step_size = self.xs[1] - self.xs[0]
         self.stellar_lines -= step_size
 
     def shift_spectral_lines_up(self):
         if not self.ref_data:
-            print("No stellar lines available for shifting.")
+            LOGGER.info("No stellar lines available for shifting.")
             return
         step_size = self.xs[1] - self.xs[0]
         self.stellar_lines += step_size
 
     def shift_spectral_lines_down(self):
         if not self.ref_data:
-            print("No stellar lines available for shifting.")
+            LOGGER.info("No stellar lines available for shifting.")
             return
         step_size = self.xs[1] - self.xs[0]
         self.stellar_lines -= step_size

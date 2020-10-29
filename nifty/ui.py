@@ -235,7 +235,7 @@ class PlotUI:
             self.delete_last_measurement_result()
             return
         if event.key == ' ':
-            print(f'Saving measurements to {self.output_file}')
+            LOGGER.info(f'Saving measurements to {self.output_file}')
             save_measurements(self.config.measurements, self.output_file)
             print_measurements(self.config.measurements)
             return
