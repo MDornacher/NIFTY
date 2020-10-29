@@ -21,13 +21,6 @@ class PlotUI:
             self.validate_measurements()
         self.output_file = output_file
 
-        # initiate masks
-        # TODO: maybe self.masks should be a dictionary and should be in config not in the main class
-        self.mask = None
-        self.mask_ref = None
-        self.mask_dibs = None
-        self.mask_stellar_lines = None
-
         # create figure
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
         self.fig.canvas.set_window_title('NIFTY')
@@ -55,21 +48,9 @@ class PlotUI:
                            'and when saving them the output file will be overwritten.')
             self.config.reset_measurements()
 
-    def calculate_masks(self):
-        self.mask = (self.config.xs > self.config.x_range_min) & \
-                    (self.config.xs < self.config.x_range_max)
-        if self.config.ref_data:
-            self.mask_ref = (self.config.xs_ref > self.config.x_range_min) & \
-                            (self.config.xs_ref < self.config.x_range_max)
-        self.mask_dibs = (self.config.dibs > self.config.x_range_min) & \
-                         (self.config.dibs < self.config.x_range_max)
-        if self.config.stellar_lines is not None:
-            self.mask_stellar_lines = (self.config.stellar_lines > self.config.x_range_min) & \
-                                      (self.config.stellar_lines < self.config.x_range_max)
-
     def reset_plot(self):
         self.config.reset_fit()
-        self.calculate_masks()
+        self.config.calculate_masks()
 
         self.reset_plot_top()
         self.reset_plot_middle()
@@ -98,12 +79,12 @@ class PlotUI:
         self.ax2.grid()
 
         if self.config.ref_data:
-            self.ax2.plot(self.config.xs_ref[self.mask_ref],
-                          self.config.ys_ref[self.mask_ref],
+            self.ax2.plot(self.config.xs_ref[self.config.masks["ref"]],
+                          self.config.ys_ref[self.config.masks["ref"]],
                           '-', color='k', alpha=0.5)
 
-        self.ax2.plot(self.config.xs[self.mask],
-                      self.config.ys[self.mask],
+        self.ax2.plot(self.config.xs[self.config.masks["data"]],
+                      self.config.ys[self.config.masks["data"]],
                       '-', color='C0')
 
         self.plot_dibs(self.ax2)
@@ -117,22 +98,22 @@ class PlotUI:
         self.ax3.grid()
 
         if self.config.ref_data:
-            self.ax3.plot(self.config.xs_ref[self.mask_ref],
-                          self.config.ys_ref[self.mask_ref],
+            self.ax3.plot(self.config.xs_ref[self.config.masks["ref"]],
+                          self.config.ys_ref[self.config.masks["ref"]],
                           '-', color='k', alpha=0.5)
 
         if self.config.ys_norm.size > 0:
-            self.ax3.plot(self.config.xs[self.mask],
-                          self.config.ys_norm[self.mask],
+            self.ax3.plot(self.config.xs[self.config.masks["data"]],
+                          self.config.ys_norm[self.config.masks["data"]],
                           '-', color='C0')
 
         else:
-            self.ax3.plot(self.config.xs[self.mask],
-                          self.config.ys[self.mask],
+            self.ax3.plot(self.config.xs[self.config.masks["data"]],
+                          self.config.ys[self.config.masks["data"]],
                           '-', color='C0')
             # "block" third plot if no fit
-            block_x_min = max(self.config.x_range_min, self.config.xs.min())
-            block_x_max = min(self.config.x_range_max, self.config.xs.max())
+            block_x_min = self.config.xs[self.config.masks["data"]].min()
+            block_x_max = self.config.xs[self.config.masks["data"]].max()
             self.ax3.axvspan(block_x_min, block_x_max, alpha=0.15, color='black')
             # self.ax3.text(0.5, 0.5, 'BLOCKED', fontsize=32, horizontalalignment='center', verticalalignment='center', transform=self.ax3.transAxes)
 
@@ -166,8 +147,8 @@ class PlotUI:
         self.fig.canvas.draw()
 
     def plot_fit_data(self):
-        self.ax2.plot(self.config.xs[self.mask],
-                      self.config.ys_fit[self.mask],
+        self.ax2.plot(self.config.xs[self.config.masks["data"]],
+                      self.config.ys_fit[self.config.masks["data"]],
                       '-', color='k', alpha=0.5, label='k={:6.6f}'.format(self.config.slope))
         self.ax2.plot(self.config.xs_fit_data,
                       self.config.ys_fit_data,
@@ -194,12 +175,12 @@ class PlotUI:
                               color='C2', alpha=0.5, label='EW={:6.6f}'.format(ew))
 
     def plot_dibs(self, ax):
-        for dib in self.config.dibs[self.mask_dibs]:
+        for dib in self.config.dibs[self.config.masks["dibs"]]:
             ax.axvline(dib, color='C3', alpha=0.3)
         ax.axvline(self.config.selected_dib, color='C3', alpha=0.5)
 
     def plot_stellar_lines(self, ax):
-        for stellar_line in self.config.stellar_lines[self.mask_stellar_lines]:
+        for stellar_line in self.config.stellar_lines[self.config.masks["stellar_lines"]]:
             ax.axvline(stellar_line, color='C0', alpha=0.3)
 
     def on_press(self, event):
@@ -329,12 +310,33 @@ class PlotConfig:
         self.x_range_max = None
         self.update_x_range()
 
+        # create masks
+        self.masks = {
+            "data": None,
+            "ref": None,
+            "dibs": None,
+            "stellar_lines": None,
+        }
+
     def reset_measurements(self):
         self.measurements = {str(dib): {"results": [], "notes": "", "marked": False} for dib in self.dibs}
 
     def update_x_range(self):
         self.x_range_min = self.selected_dib * (1 - self.x_range_factor)
         self.x_range_max = self.selected_dib * (1 + self.x_range_factor)
+
+    # noinspection PyTypeChecker
+    def calculate_masks(self):
+        self.masks["data"] = (self.xs > self.x_range_min) & \
+                             (self.xs < self.x_range_max)
+        if self.ref_data is True:
+            self.masks["ref"] = (self.xs_ref > self.x_range_min) & \
+                                (self.xs_ref < self.x_range_max)
+        self.masks["dibs"] = (self.dibs > self.x_range_min) & \
+                             (self.dibs < self.x_range_max)
+        if self.stellar_lines is not None:
+            self.masks["stellar_lines"] = (self.stellar_lines > self.x_range_min) & \
+                                          (self.stellar_lines < self.x_range_max)
 
     def create_spectrum(self, x_range=(100, 200), sigma_range=(1, 5), strength_range=(0, 1), number_of_values=300,
                         number_of_dibs=3, sn=10):
