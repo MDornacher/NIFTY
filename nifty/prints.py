@@ -58,9 +58,16 @@ def print_navigation_keyboard_shortcuts():
     #         -  zoom out feature by increasing range around feature
     #         m  mark / unmark current measurement
     #         n  add note to measurement in command line prompt
-    # backspace  delete last measurement
+    # backspace  delete last measurement result
     #  spacebar  save measurements
     #    escape  exit NIFTY
     {'-'*40}
     '''
     print(navigation_keyboard_shortcuts)
+
+
+def print_measurements(measurements):
+    for feature, attributes in measurements.items():
+        print(f'Measurements for {feature}:')
+        for key, value in attributes.items():
+            print(f'\t{key}: {value}')

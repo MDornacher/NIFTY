@@ -141,15 +141,13 @@ def match_spectrum_unit_to_features(xs, features):
                      f'10**{list(f_unit_range)}')
 
 
-def load_results(input_file):
-    # TODO: include all measurement attributes
+def load_measurements(input_file):
     with open(input_file, 'r') as f:
         measurements = json.load(f)
     return measurements
 
 
-def save_results(results, output_file):
-    # TODO: include all measurement attributes
+def save_measurements(results, output_file):
     with open(output_file, 'w') as f:
         json.dump(results, f)
 

@@ -1,20 +1,24 @@
+import logging
+
 import numpy as np
 from scipy import signal
 from matplotlib import pyplot as plt
 from matplotlib.widgets import SpanSelector
 
-from nifty.io import save_results
-from nifty.prints import print_navigation_keyboard_shortcuts
+from nifty.io import save_measurements
+from nifty.prints import print_navigation_keyboard_shortcuts, print_measurements
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class PlotUI:
     def __init__(self, config, output_file, results=None):
         # parse input
         self.config = config
-        self.measurements = Measurements(self.config.dibs)
         if results is not None:
-            self.measurements.results = results
-            self.validate_results()
+            self.config.measurements.results = results
+            self.validate_measurements()
         self.output_file = output_file
 
         # initiate masks
@@ -38,15 +42,18 @@ class PlotUI:
                                     rectprops=dict(alpha=0.5, facecolor='yellow'))
         plt.show()
 
-    def validate_results(self):
+    def validate_measurements(self):
         dibs_test_list = [str(dib) for dib in self.config.dibs]
-        results_test_list = list(self.measurements.results.keys())
+        results_test_list = list(self.config.measurements.keys())
 
         dibs_test_list.sort()
         results_test_list.sort()
 
         if dibs_test_list != results_test_list:
-            raise ValueError(f'The list of dibs and results do not match.')
+            LOGGER.warning('The features and the loaded measurements do not match. '
+                           'Therefore the measurements will be ignored '
+                           'and when saving them the output file will be overwritten.')
+            self.config.reset_measurements()
 
     def calculate_masks(self):
         self.mask = (self.config.xs > self.config.x_range_min) & \
@@ -124,7 +131,9 @@ class PlotUI:
                           self.config.ys[self.mask],
                           '-', color='C0')
             # "block" third plot if no fit
-            self.ax3.axvspan(self.config.x_range_min, self.config.x_range_max, alpha=0.15, color='black')
+            block_x_min = max(self.config.x_range_min, self.config.xs.min())
+            block_x_max = min(self.config.x_range_max, self.config.xs.max())
+            self.ax3.axvspan(block_x_min, block_x_max, alpha=0.15, color='black')
             # self.ax3.text(0.5, 0.5, 'BLOCKED', fontsize=32, horizontalalignment='center', verticalalignment='center', transform=self.ax3.transAxes)
 
         self.plot_dibs(self.ax3)
@@ -172,7 +181,7 @@ class PlotUI:
 
         diff = (1 - self.config.ys_norm[indmin:indmax]) * (self.config.xs[1] - self.config.xs[0])
         ew = sum(diff)
-        self.measurements.results[str(self.config.selected_dib)].append(ew)
+        self.config.measurements[str(self.config.selected_dib)]["results"].append(ew)
 
         self.reset_plot_bottom()
         self.plot_ew_data(indmin, indmax, ew)
@@ -243,44 +252,43 @@ class PlotUI:
             self.add_note_to_measurement()
             return
         if event.key == 'backspace':
-            self.delete_last_measurement()
+            self.delete_last_measurement_result()
             return
         if event.key == ' ':
             print(f'Saving measurements to {self.output_file}')
-            save_results(self.measurements.results, self.output_file)
-            for dib in self.config.dibs:
-                print(dib, self.measurements.results[str(dib)], self.measurements.notes[str(dib)])
+            save_measurements(self.config.measurements, self.output_file)
+            print_measurements(self.config.measurements)
             return
         if event.key == 'escape':
             # TODO: 'Process finished with exit code -1073741819 (0xC0000005)' but closing it with X button works fine
             plt.close('all')
         print("Unrecognized keyboard shortcuts. Press 'h' for full list of shortcuts.")
 
-    def delete_last_measurement(self):
-        if self.measurements.results[str(self.config.selected_dib)]:
-            last_measurement = self.measurements.results[str(self.config.selected_dib)].pop()
+    def delete_last_measurement_result(self):
+        if self.config.measurements[str(self.config.selected_dib)]["results"]:
+            last_measurement = self.config.measurements[str(self.config.selected_dib)]["results"].pop()
             print(f'Removed the measurement {last_measurement} for DIB {self.config.selected_dib}'
-                  f' - {len(self.measurements.results[str(self.config.selected_dib)])} remaining.')
+                  f' - {len(self.config.measurements[str(self.config.selected_dib)]["results"])} result(s) remaining.')
         else:
-            print(f'No measurements for DIB {self.config.selected_dib} found.')
+            print(f'No measurement result for DIB {self.config.selected_dib} found.')
 
     def add_note_to_measurement(self):
         note = input(f"Add note to feature {self.config.selected_dib}: ").strip()
-        self.measurements.notes[str(self.config.selected_dib)] += note + "\n"
-        print(f"Full note:\n{self.measurements.notes[str(self.config.selected_dib)]}")
+        self.config.measurements[str(self.config.selected_dib)]["notes"] += note + "\n"
+        print(f"Full note:\n{self.config.measurements[str(self.config.selected_dib)]['notes']}")
 
     def toggle_measurement_mark(self):
-        if self.measurements.marked[str(self.config.selected_dib)]:
+        if self.config.measurements[str(self.config.selected_dib)]["marked"]:
             print(f"Removed mark from feature {self.config.selected_dib}.")
-            self.measurements.marked[str(self.config.selected_dib)] = False
+            self.config.measurements[str(self.config.selected_dib)]["marked"] = False
         else:
             print(f"Marked feature {self.config.selected_dib}.")
-            self.measurements.marked[str(self.config.selected_dib)] = True
+            self.config.measurements[str(self.config.selected_dib)]["marked"] = True
 
 
 class PlotConfig:
     def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None, stellar_lines=None):
-        # parameter for full spectrum
+        # parse parameters
         # TODO: distinguish between missing xs/ys and missing dibs_selection
         if any((xs is None, ys is None, dibs is None)):
             self.create_spectrum()
@@ -288,24 +296,26 @@ class PlotConfig:
             self.xs = xs
             self.ys = ys
             self.dibs = dibs
-
-        self.stellar_lines = stellar_lines
-
         if xs_ref is None or ys_ref is None:
             self.ref_data = False
         else:
             self.ref_data = True
             self.xs_ref = xs_ref
             self.ys_ref = ys_ref
+        self.stellar_lines = stellar_lines
 
-        # parameter for norm
+        # initialize measurements
+        self.measurements = None
+        self.reset_measurements()
+
+        # parameter for norm plot
         self.slope = None
         self.intercept = None
         self.xs_fit_data = np.array([])
         self.ys_fit_data = np.array([])
         self.ys_fit = np.array([])
 
-        # parameter for measurement
+        # parameter for measurement plot
         self.ys_norm = np.array([])
 
         # additional parameters
@@ -318,6 +328,9 @@ class PlotConfig:
         self.x_range_min = None
         self.x_range_max = None
         self.update_x_range()
+
+    def reset_measurements(self):
+        self.measurements = {str(dib): {"results": [], "notes": "", "marked": False} for dib in self.dibs}
 
     def update_x_range(self):
         self.x_range_min = self.selected_dib * (1 - self.x_range_factor)
@@ -402,12 +415,3 @@ class PlotConfig:
             return
         step_size = self.xs[1] - self.xs[0]
         self.stellar_lines -= step_size
-
-
-class Measurements:
-    # TODO: instead of using dicts find a cleaner way of storing measurements, maybe don't use a class at all
-    def __init__(self, dibs):
-        self.results = {str(dib): [] for dib in dibs}
-        self.notes = {str(dib): "" for dib in dibs}
-        self.marked = {str(dib): False for dib in dibs}
-        # TODO: maybe also include timestamps for results, notes (maybe even marked)

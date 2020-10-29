@@ -1,0 +1,30 @@
+# sometimes when adding a second fit region
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "G:\Anaconda3\envs\NIFTY-env\lib\tkinter\__init__.py", line 1883, in __call__
+    return self.func(*args)
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\matplotlib\backends\_backend_tk.py", line 313, in button_release_event
+    FigureCanvasBase.button_release_event(self, x, y, num, guiEvent=event)
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\matplotlib\backend_bases.py", line 1877, in button_release_event
+    self.callbacks.process(s, event)
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\matplotlib\cbook\__init__.py", line 229, in process
+    self.exception_handler(exc)
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\matplotlib\cbook\__init__.py", line 81, in _exception_printer
+    raise exc
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\matplotlib\cbook\__init__.py", line 224, in process
+    func(*args, **kwargs)
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\matplotlib\widgets.py", line 1555, in release
+    self._release(event)
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\matplotlib\widgets.py", line 1787, in _release
+    self.onselect(vmin, vmax)
+  File "G:\NIFTY\nifty\ui.py", line 157, in onselect_fit_range
+    self.config.slope, self.config.intercept = np.polyfit(self.config.xs_fit_data, self.config.ys_fit_data, 1)
+  File "<__array_function__ internals>", line 5, in polyfit
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\numpy\lib\polynomial.py", line 629, in polyfit
+    c, resids, rank, s = lstsq(lhs, rhs, rcond)
+  File "<__array_function__ internals>", line 5, in lstsq
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\numpy\linalg\linalg.py", line 2306, in lstsq
+    x, resids, rank, s = gufunc(a, b, rcond, signature=signature, extobj=extobj)
+  File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\numpy\linalg\linalg.py", line 100, in _raise_linalgerror_lstsq
+    raise LinAlgError("SVD did not converge in Linear Least Squares")
+numpy.linalg.LinAlgError: SVD did not converge in Linear Least Squares
