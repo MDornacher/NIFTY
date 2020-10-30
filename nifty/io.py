@@ -103,7 +103,7 @@ def load_features(input_file):
     if data_errors:
         LOGGER.warning(f'The following entries in feature input "{input_file}" could not be loaded: '
                        f'{data_errors}')
-    return np.array(data_final)
+    return np.sort(np.array(data_final))
 
 
 def trim_features(features, feature_min=None, feature_max=None):
