@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.widgets import SpanSelector
+from matplotlib.widgets import SpanSelector, TextBox
 
 from nifty.io import save_measurements
 from nifty.prints import (print_measurements,
@@ -12,18 +12,21 @@ LOGGER = logging.getLogger(__name__)
 
 
 class PlotUI:
-    def __init__(self, config, output_file, results=None):
+    def __init__(self, config, output_file, measurements=None, title=None):
         # parse input
         self.config = config
-        if results is not None:
-            self.config.measurements.results = results
+        if measurements is not None:
+            self.config.measurements = measurements
             self.validate_measurements()
         self.output_file = output_file
 
         # create figure
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
         self.fig.canvas.set_window_title('NIFTY')
+        if title is not None:
+            self.fig.suptitle(title)  # TODO: fig title is fig centered while ax titles are ax centered => unaligned
         plt.get_current_fig_manager().window.wm_iconbitmap("icon.ico")
+        plt.get_current_fig_manager().window.state('zoomed')
 
         self.reset_plot()
 
@@ -33,6 +36,15 @@ class PlotUI:
                                      rectprops=dict(alpha=0.5, facecolor='yellow'))
         self.span_ew = SpanSelector(self.ax3, self.onselect_ew_range, 'horizontal', useblit=True,
                                     rectprops=dict(alpha=0.5, facecolor='yellow'))
+
+        # text box widget
+        # TODO: this is better then 'input()' but doesnt work yet
+        # TODO: somehow define when entering text is done
+        # TODO: extremely slow
+        # TODO: lock shortcuts while typing
+        # axbox = plt.axes([0.1, 0.05, 0.8, 0.075])
+        # text_box = TextBox(axbox, 'Evaluate', initial="Write here")
+
         plt.show()
 
     def validate_measurements(self):
@@ -72,6 +84,9 @@ class PlotUI:
             self.ax1.axvspan(self.config.xs.min(), self.config.x_range_min, alpha=0.15, color='black')
         if self.config.x_range_max < self.config.xs.max():
             self.ax1.axvspan(self.config.x_range_max, self.config.xs.max(), alpha=0.15, color='black')
+
+        # TODO: those limits are just temporarily
+        self.ax1.set_ylim([-0.2, 1.7])
 
     def reset_plot_middle(self):
         self.ax2.clear()
@@ -122,6 +137,10 @@ class PlotUI:
         if self.config.stellar_lines is not None:
             self.plot_stellar_lines(self.ax3)
 
+        self.plot_notes(self.ax3)
+        self.plot_results(self.ax3)
+        self.plot_marked(self.ax3)
+
     def onselect_fit_range(self, xmin, xmax):
         # get x and y values of selection
         indmin, indmax = np.searchsorted(self.config.xs, (xmin, xmax))
@@ -132,6 +151,7 @@ class PlotUI:
         thisy = self.config.ys[indmin:indmax]
 
         # append to fit region and attempt to fit
+        # TODO: only add points once, don't double add them if they are selected again
         self.config.xs_fit_data = np.append(thisx, self.config.xs_fit_data)
         self.config.ys_fit_data = np.append(thisy, self.config.ys_fit_data)
         # noinspection PyTupleAssignmentBalance
@@ -142,7 +162,7 @@ class PlotUI:
         # redraw relevant subplots
         self.reset_plot_middle()
         self.plot_fit_data()
-        self.ax2.legend()
+        # self.ax2.legend()
         self.reset_plot_bottom()
         self.fig.canvas.draw()
 
@@ -166,7 +186,7 @@ class PlotUI:
 
         self.reset_plot_bottom()
         self.plot_ew_data(indmin, indmax, ew)
-        self.ax3.legend()
+        # self.ax3.legend()
         self.fig.canvas.draw()
 
     def plot_ew_data(self, indmin, indmax, ew):
@@ -176,12 +196,30 @@ class PlotUI:
 
     def plot_dibs(self, ax):
         for dib in self.config.dibs[self.config.masks["dibs"]]:
-            ax.axvline(dib, color='C3', alpha=0.3)
+            ax.axvline(dib, color='C3', alpha=0.5)
+        ax.axvline(self.config.selected_dib, color='C1', alpha=0.5, linewidth=1.5)
         ax.axvline(self.config.selected_dib, color='C3', alpha=0.5)
 
     def plot_stellar_lines(self, ax):
         for stellar_line in self.config.stellar_lines[self.config.masks["stellar_lines"]]:
-            ax.axvline(stellar_line, color='C0', alpha=0.3)
+            ax.axvline(stellar_line, color='C4', alpha=0.5)
+
+    def plot_notes(self, ax):
+        bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)
+        s = self.config.measurements[str(self.config.selected_dib)]['notes'].strip()
+        ax.text(.05, .95, s, transform=ax.transAxes, ha="left", va="top", bbox=bbox_props)
+
+    def plot_results(self, ax):
+        bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)
+        s = "\n".join([str(result) for result in self.config.measurements[str(self.config.selected_dib)]['results']])
+        ax.text(.95, .95, s, transform=ax.transAxes, ha="right", va="top", bbox=bbox_props)
+
+    def plot_marked(self, ax):
+        if not self.config.measurements[str(self.config.selected_dib)]["marked"]:
+            color = "gray"
+        else:
+            color = "C3"
+        ax.plot(0.05, 0.05, marker="o", markersize="15", color=color, markeredgewidth=1., markeredgecolor="k", transform=ax.transAxes)
 
     def on_press(self, event):
         if event.key == 'h':
@@ -228,12 +266,17 @@ class PlotUI:
             return
         if event.key == 'm':
             self.toggle_measurement_mark()
+            self.plot_marked(self.ax3)
+            self.fig.canvas.draw()
             return
         if event.key == 'n':
             self.add_note_to_measurement()
+            self.plot_notes(self.ax3)
+            self.fig.canvas.draw()
             return
         if event.key == 'backspace':
             self.delete_last_measurement_result()
+            self.reset_plot()
             return
         if event.key == ' ':
             LOGGER.info(f'Saving measurements to {self.output_file}')
@@ -243,7 +286,10 @@ class PlotUI:
         if event.key == 'escape':
             # TODO: 'Process finished with exit code -1073741819 (0xC0000005)' but closing it with X button works fine
             plt.close('all')
-        print("Unrecognized keyboard shortcuts. Press 'h' for full list of shortcuts.")
+            return
+        if event.key == 'alt':
+            return
+        print(f"Unrecognized keyboard shortcut ({event.key}). Press 'h' for full list of shortcuts.")
 
     def delete_last_measurement_result(self):
         if self.config.measurements[str(self.config.selected_dib)]["results"]:
@@ -256,12 +302,9 @@ class PlotUI:
     def add_note_to_measurement(self):
         note = input(f"Add note to feature {self.config.selected_dib}: ").strip()
         self.config.measurements[str(self.config.selected_dib)]["notes"] += note + "\n"
-        print(f"Full note:\n{self.config.measurements[str(self.config.selected_dib)]['notes']}")
 
     def toggle_measurement_mark(self):
         if self.config.measurements[str(self.config.selected_dib)]["marked"]:
-            print(f"Removed mark from feature {self.config.selected_dib}.")
             self.config.measurements[str(self.config.selected_dib)]["marked"] = False
         else:
-            print(f"Marked feature {self.config.selected_dib}.")
             self.config.measurements[str(self.config.selected_dib)]["marked"] = True

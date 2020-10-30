@@ -28,3 +28,6 @@ Traceback (most recent call last):
   File "G:\Anaconda3\envs\NIFTY-env\lib\site-packages\numpy\linalg\linalg.py", line 100, in _raise_linalgerror_lstsq
     raise LinAlgError("SVD did not converge in Linear Least Squares")
 numpy.linalg.LinAlgError: SVD did not converge in Linear Least Squares
+
+# add prompt to figure
+https://stackoverflow.com/questions/28001532/interactive-matplotlib-plots-via-textboxes

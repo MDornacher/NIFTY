@@ -84,7 +84,7 @@ def trim_spectrum(xs, ys):
     if len(xs_trimmed) == len(ys_trimmed):
         LOGGER.info('The size of the (x, y) values in the spectrum changed from '
                     f'{(len(xs), len(ys))} to {(len(xs_trimmed), len(ys_trimmed))}.')
-        return xs_trimmed, ys_trimmed
+        return xs_trimmed[1:-1], ys_trimmed[1:-1]  # Trim first and last entry to avoid silly outliers
     raise ValueError('The trimmed size of the (x, y) values no longer matches: '
                      f'{len(xs_trimmed)} != {len(ys_trimmed)}')
 

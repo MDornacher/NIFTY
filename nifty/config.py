@@ -141,7 +141,7 @@ class PlotConfig:
             LOGGER.info("No ref data available for shifting.")
             return
         step_size = self.xs[1] - self.xs[0]
-        self.stellar_lines -= step_size
+        self.xs_ref -= step_size
 
     def shift_spectral_lines_up(self):
         if self.stellar_lines is None:

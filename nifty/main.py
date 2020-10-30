@@ -31,7 +31,7 @@ def demo_mode():
     config = PlotConfig()
     results = None
     output_file = "demo_measurements.json"
-    PlotUI(config, output_file, results)
+    PlotUI(config, output_file, results, title="Demo Mode of NIFTY")
 
 
 def measurement_mode():
@@ -47,9 +47,19 @@ def measurement_mode():
     else:
         stellar_lines = None
 
-    for selected_input in args.input:
+    for i, selected_input in enumerate(args.input):
         if args.output is None:
             args.output = create_output_path(selected_input)
+        if os.path.isfile(args.output):
+            print(args.output)
+            if args.skip:
+                print("Processing skipped, because output file already exists")
+                LOGGER.info("Processing skipped, because output file already exists")
+                args.output = None  # TODO: this is a bad fix for multifile input
+                continue
+            measurements = load_measurements(args.output)
+        else:
+            measurements = None
 
         xs, ys = load_spectrum(selected_input, args.type, args.xkey, args.ykey)
         if args.matching:
@@ -72,14 +82,11 @@ def measurement_mode():
                             xs_ref=xs_ref_trimmed, ys_ref=ys_ref_trimmed,
                             stellar_lines=stellar_lines)
 
-        if os.path.isfile(args.output):
-            results = load_measurements(args.output)
-        else:
-            results = None
-
-        PlotUI(config, args.output, results)
+        title = f"[ {i} / {len(args.input)}] {os.path.basename(selected_input)}"
+        PlotUI(config, args.output, measurements, title)
         # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
         # TODO: additional console for LOGGER
+        args.output = None  # TODO: this is a bad fix for multifile input
 
 
 def parse_input():
@@ -95,6 +102,7 @@ def parse_input():
     parser.add_argument('--ref', required=False, default=None, help='Specify reference spectrum.')
     parser.add_argument('--stellar', required=False, default=None, nargs="+",
                         help='Specify input file(s) of stellar reference lines')
+    parser.add_argument('--skip', help='Skip processing if output file already exists.', action='store_true')
     # TODO: force overwrite parameter like '-F'
     return parser.parse_args()
 
