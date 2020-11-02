@@ -21,30 +21,30 @@ class PlotUI:
         self.output_file = output_file
 
         # create figure
-        self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6), constrained_layout=True)
+        self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6))  # , constrained_layout=True)
         self.fig.canvas.set_window_title('NIFTY')
         if title is not None:
             self.fig.suptitle(title)  # TODO: fig title is fig centered while ax titles are ax centered => unaligned
         plt.get_current_fig_manager().window.wm_iconbitmap("icon.ico")
         plt.get_current_fig_manager().window.state('zoomed')
 
-        self.reset_plot()
-
         # define events
         self.cid = self.fig.canvas.mpl_connect('key_press_event', self.on_press)
+        # TODO: add 'close_event' to autosave measurements
         self.span_fit = SpanSelector(self.ax2, self.onselect_fit_range, 'horizontal', useblit=True,
                                      rectprops=dict(alpha=0.5, facecolor='yellow'))
         self.span_ew = SpanSelector(self.ax3, self.onselect_ew_range, 'horizontal', useblit=True,
                                     rectprops=dict(alpha=0.5, facecolor='yellow'))
 
         # text box widget
-        # TODO: this is better then 'input()' but doesnt work yet
-        # TODO: somehow define when entering text is done
-        # TODO: extremely slow
-        # TODO: lock shortcuts while typing
-        # axbox = plt.axes([0.1, 0.05, 0.8, 0.075])
-        # text_box = TextBox(axbox, 'Evaluate', initial="Write here")
+        # TODO: the whole textbox is super hacky and some of the settings dont work right yet
+        plt.subplots_adjust(bottom=0.1)
+        axbox = plt.axes([0.1, 0.01, 0.8, 0.05])
+        self.text_box = TextBox(axbox, 'Notes:', initial="")
+        self.text_box.on_submit(self.submit_text)
+        self.text_box.set_active(False)
 
+        self.reset_plot()
         plt.show()
 
     def validate_measurements(self):
@@ -67,6 +67,8 @@ class PlotUI:
         self.reset_plot_top()
         self.reset_plot_middle()
         self.reset_plot_bottom()
+
+        self.reset_textbox()
 
         self.fig.canvas.draw()
 
@@ -121,16 +123,14 @@ class PlotUI:
             self.ax3.plot(self.config.xs[self.config.masks["data"]],
                           self.config.ys_norm[self.config.masks["data"]],
                           '-', color='C0')
+            self.span_ew.set_active(True)
 
         else:
             self.ax3.plot(self.config.xs[self.config.masks["data"]],
                           self.config.ys[self.config.masks["data"]],
                           '-', color='C0')
             # "block" third plot if no fit
-            block_x_min = self.config.xs[self.config.masks["data"]].min()
-            block_x_max = self.config.xs[self.config.masks["data"]].max()
-            self.ax3.axvspan(block_x_min, block_x_max, alpha=0.15, color='black')
-            # self.ax3.text(0.5, 0.5, 'BLOCKED', fontsize=32, horizontalalignment='center', verticalalignment='center', transform=self.ax3.transAxes)
+            self.span_ew.set_active(False)
 
         self.plot_dibs(self.ax3)
 
@@ -194,6 +194,24 @@ class PlotUI:
                               where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
                               color='C2', alpha=0.5, label='EW={:6.6f}'.format(ew))
 
+    def submit_text(self, text):
+        self.config.measurements[str(self.config.selected_dib)]["notes"] = text
+        # TODO: resetting colors has no effect, but works when activating textbox
+        self.text_box.color = '.95'
+        self.text_box.hovercolor = '.95'
+        self.reset_plot_bottom()
+        self.plot_notes(self.ax3)
+        self.fig.canvas.draw()
+        self.text_box.set_active(False)
+
+    def activate_textbox(self):
+        self.text_box.set_active(True)
+        self.text_box.color = '1'
+        self.fig.canvas.draw()
+
+    def reset_textbox(self):
+        self.text_box.set_val(self.config.measurements[str(self.config.selected_dib)]["notes"])
+
     def plot_dibs(self, ax):
         for dib in self.config.dibs[self.config.masks["dibs"]]:
             ax.axvline(dib, color='C3', alpha=0.5)
@@ -222,6 +240,9 @@ class PlotUI:
         ax.plot(0.05, 0.05, marker="o", markersize="15", color=color, markeredgewidth=1., markeredgecolor="k", transform=ax.transAxes)
 
     def on_press(self, event):
+        if hasattr(self, "text_box") and self.text_box.get_active():
+            print("textbox is active")
+            return
         if event.key == 'h':
             print_navigation_keyboard_shortcuts()
             return
@@ -270,9 +291,8 @@ class PlotUI:
             self.fig.canvas.draw()
             return
         if event.key == 'n':
-            self.add_note_to_measurement()
-            self.plot_notes(self.ax3)
-            self.fig.canvas.draw()
+            # TODO: the first n will always be printed in textbox
+            self.activate_textbox()
             return
         if event.key == 'backspace':
             self.delete_last_measurement_result()
@@ -298,10 +318,6 @@ class PlotUI:
                   f' - {len(self.config.measurements[str(self.config.selected_dib)]["results"])} result(s) remaining.')
         else:
             print(f'No measurement result for DIB {self.config.selected_dib} found.')
-
-    def add_note_to_measurement(self):
-        note = input(f"Add note to feature {self.config.selected_dib}: ").strip()
-        self.config.measurements[str(self.config.selected_dib)]["notes"] += note + "\n"
 
     def toggle_measurement_mark(self):
         if self.config.measurements[str(self.config.selected_dib)]["marked"]:
