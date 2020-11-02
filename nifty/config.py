@@ -58,7 +58,7 @@ class PlotConfig:
         }
 
     def reset_measurements(self):
-        self.measurements = {str(dib): {"results": [], "notes": "", "marked": False} for dib in self.dibs}
+        self.measurements = {str(dib): {"results": [], "notes": "", "marked": False, "mode": [], "range": []} for dib in self.dibs}
 
     def update_x_range(self):
         self.x_range_min = self.selected_dib * (1 - self.x_range_factor)

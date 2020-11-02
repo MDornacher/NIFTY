@@ -31,9 +31,9 @@ class PlotUI:
         # define events
         self.cid = self.fig.canvas.mpl_connect('key_press_event', self.on_press)
         # TODO: add 'close_event' to autosave measurements
-        self.span_fit = SpanSelector(self.ax2, self.onselect_fit_range, 'horizontal', useblit=True,
+        self.span_fit = SpanSelector(self.ax2, self.on_select_fit_range, 'horizontal', useblit=True,
                                      rectprops=dict(alpha=0.5, facecolor='yellow'))
-        self.span_ew = SpanSelector(self.ax3, self.onselect_ew_range, 'horizontal', useblit=True,
+        self.span_ew = SpanSelector(self.ax3, self.on_select_ew_range, 'horizontal', useblit=True,
                                     rectprops=dict(alpha=0.5, facecolor='yellow'))
 
         # text box widget
@@ -91,6 +91,8 @@ class PlotUI:
         self.ax1.set_ylim([-0.2, 1.7])
 
     def reset_plot_middle(self):
+        # TODO: should get some mask independent xlim
+        # TODO: overwrite ylim to better zoom into feature
         self.ax2.clear()
         self.ax2.set_title('DIB Region')
         self.ax2.grid()
@@ -110,6 +112,7 @@ class PlotUI:
             self.plot_stellar_lines(self.ax2)
 
     def reset_plot_bottom(self):
+        # TODO: should get some mask independent xlim
         self.ax3.clear()
         self.ax3.set_title('Local Norm')
         self.ax3.grid()
@@ -141,7 +144,7 @@ class PlotUI:
         self.plot_results(self.ax3)
         self.plot_marked(self.ax3)
 
-    def onselect_fit_range(self, xmin, xmax):
+    def on_select_fit_range(self, xmin, xmax):
         # get x and y values of selection
         indmin, indmax = np.searchsorted(self.config.xs, (xmin, xmax))
         indmin = max(0, indmin - 2)
@@ -174,7 +177,7 @@ class PlotUI:
                       self.config.ys_fit_data,
                       'o', color='C1', alpha=0.5)
 
-    def onselect_ew_range(self, xmin, xmax):
+    def on_select_ew_range(self, xmin, xmax):
         # get x and y values of selection
         indmin, indmax = np.searchsorted(self.config.xs, (xmin, xmax))
         indmin = max(0, indmin - 2)
@@ -183,6 +186,12 @@ class PlotUI:
         diff = (1 - self.config.ys_norm[indmin:indmax]) * (self.config.xs[1] - self.config.xs[0])
         ew = sum(diff)
         self.config.measurements[str(self.config.selected_dib)]["results"].append(ew)
+
+        mode = self.config.xs[indmin:indmax][np.argmin(self.config.ys_norm[indmin:indmax])]
+        self.config.measurements[str(self.config.selected_dib)]["mode"].append(mode)
+
+        ew_range = [self.config.xs[indmin], self.config.xs[indmax]]
+        self.config.measurements[str(self.config.selected_dib)]["range"].append(ew_range)
 
         self.reset_plot_bottom()
         self.plot_ew_data(indmin, indmax, ew)
@@ -215,7 +224,7 @@ class PlotUI:
     def plot_dibs(self, ax):
         for dib in self.config.dibs[self.config.masks["dibs"]]:
             ax.axvline(dib, color='C3', alpha=0.5)
-        ax.axvline(self.config.selected_dib, color='C1', alpha=0.5, linewidth=1.5)
+        ax.axvline(self.config.selected_dib, color='C1', alpha=0.5, linewidth=2)
         ax.axvline(self.config.selected_dib, color='C3', alpha=0.5)
 
     def plot_stellar_lines(self, ax):
