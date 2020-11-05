@@ -2,8 +2,10 @@ import logging
 
 import numpy as np
 from scipy import signal
+from PyAstronomy import pyasl
 
 LOGGER = logging.getLogger(__name__)
+VELOCITY_SHIFT_STEP_SIZE = 5  # km/s
 
 
 class PlotConfig:
@@ -13,15 +15,19 @@ class PlotConfig:
         if any((xs is None, ys is None, dibs is None)):
             self.create_spectrum()
         else:
-            self.xs = xs
-            self.ys = ys
+            self.xs_base = xs
+            self.ys_base = ys
             self.dibs = dibs
+            self.xs = np.copy(self.xs_base)
+            self.ys = np.copy(self.ys_base)
         if xs_ref is None or ys_ref is None:
             self.ref_data = False
         else:
             self.ref_data = True
-            self.xs_ref = xs_ref
-            self.ys_ref = ys_ref
+            self.xs_ref_base = xs_ref
+            self.ys_ref_base = ys_ref
+            self.xs_ref = np.copy(self.xs_ref_base)
+            self.ys_ref = np.copy(self.ys_ref_base)
         self.stellar_lines = stellar_lines
 
         # initialize measurements
@@ -58,6 +64,12 @@ class PlotConfig:
             "stellar_lines": None,
         }
 
+        # starting velocities for doppler shift
+        self.velocity_shifts = {
+            "data": 0.,
+            "ref": 0.,
+        }
+
     def reset_measurements(self):
         self.measurements = {str(dib): {"results": [], "notes": "", "marked": False, "mode": [], "range": []} for dib in self.dibs}
 
@@ -85,9 +97,9 @@ class PlotConfig:
         else:
             x_range_min, x_range_max = x_range
 
-        self.xs = np.linspace(x_range_min, x_range_max, number_of_values)
-        noise = np.random.rand(self.xs.size)
-        self.ys = 1 + noise / sn - np.mean(noise / sn)
+        self.xs_base = np.linspace(x_range_min, x_range_max, number_of_values)
+        noise = np.random.rand(self.xs_base.size)
+        self.ys_base = 1 + noise / sn - np.mean(noise / sn)
 
         sigma_min, sigma_max = sigma_range
         strength_min, strength_max = strength_range
@@ -97,8 +109,8 @@ class PlotConfig:
             strength = strength_min + np.random.rand() * strength_max
             gaussian = signal.gaussian(number_of_values * 2, sigma)
             dib_index = int(np.random.rand() * number_of_values)
-            self.dibs.append(self.xs[dib_index])
-            self.ys = self.ys - strength * gaussian[number_of_values - dib_index:2*number_of_values - dib_index]
+            self.dibs.append(self.xs_base[dib_index])
+            self.ys_base = self.ys_base - strength * gaussian[number_of_values - dib_index:2*number_of_values - dib_index]
         self.dibs.sort()
         self.dibs = np.array(self.dibs)
 
@@ -131,21 +143,34 @@ class PlotConfig:
     def decrease_y_range(self):
         self.y_range_factor -= 0.1
 
+    def shift_data_up(self):
+        self.velocity_shifts["data"] += VELOCITY_SHIFT_STEP_SIZE
+        self.apply_velocity_shifts()
+
+    def shift_data_down(self):
+        self.velocity_shifts["data"] -= VELOCITY_SHIFT_STEP_SIZE
+        self.apply_velocity_shifts()
+
     def shift_ref_data_up(self):
         if not self.ref_data:
             LOGGER.info("No ref data available for shifting.")
             return
-        step_size = self.xs_ref[1] - self.xs_ref[0]
-        self.xs_ref += step_size
+        # step_size = self.xs_ref[1] - self.xs_ref[0]
+        # self.xs_ref += step_size
+        self.velocity_shifts["ref"] += VELOCITY_SHIFT_STEP_SIZE
+        self.apply_velocity_shifts()
 
     def shift_ref_data_down(self):
         if not self.ref_data:
             LOGGER.info("No ref data available for shifting.")
             return
-        step_size = self.xs[1] - self.xs[0]
-        self.xs_ref -= step_size
+        # step_size = self.xs[1] - self.xs[0]
+        # self.xs_ref -= step_size
+        self.velocity_shifts["ref"] -= VELOCITY_SHIFT_STEP_SIZE
+        self.apply_velocity_shifts()
 
     def shift_spectral_lines_up(self):
+        # TODO: REMOVE ME
         if self.stellar_lines is None:
             LOGGER.info("No stellar lines available for shifting.")
             return
@@ -153,8 +178,16 @@ class PlotConfig:
         self.stellar_lines += step_size
 
     def shift_spectral_lines_down(self):
+        # TODO: REMOVE ME
         if self.stellar_lines is None:
             LOGGER.info("No stellar lines available for shifting.")
             return
         step_size = self.xs[1] - self.xs[0]
         self.stellar_lines -= step_size
+
+    def apply_velocity_shifts(self):
+        self.ys, self.xs = pyasl.dopplerShift(self.xs_base, self.ys_base,
+                                              self.velocity_shifts["data"])
+        if self.ref_data:
+            self.ys_ref, self.xs_ref = pyasl.dopplerShift(self.xs_ref_base, self.ys_ref_base,
+                                                          self.velocity_shifts["ref"])

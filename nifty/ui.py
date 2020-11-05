@@ -276,19 +276,19 @@ class PlotUI:
             self.reset_plot()
             return
         if event.key == 'up':
-            self.config.shift_ref_data_up()
+            self.config.shift_data_up()
             self.reset_plot()
             return
         if event.key == 'down':
-            self.config.shift_ref_data_down()
+            self.config.shift_data_down()
             self.reset_plot()
             return
         if event.key == 'alt+up':
-            self.config.shift_spectral_lines_up()
+            self.config.shift_ref_data_up()
             self.reset_plot()
             return
         if event.key == 'alt+down':
-            self.config.shift_spectral_lines_down()
+            self.config.shift_ref_data_down()
             self.reset_plot()
             return
         if event.key == '+':
