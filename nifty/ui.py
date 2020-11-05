@@ -190,8 +190,9 @@ class PlotUI:
         indmin = max(0, indmin - 2)
         indmax = min(len(self.config.xs) - 1, indmax)
 
-        diff = (1 - self.config.ys_norm[indmin:indmax]) * (self.config.xs[1] - self.config.xs[0])
-        ew = sum(diff)
+        absorption_depth = (1 - self.config.ys_norm[indmin:indmax])
+        dynamic_pixel_width = self.config.xs[indmin+1:indmax+1] - self.config.xs[indmin:indmax]
+        ew = sum(absorption_depth * dynamic_pixel_width)
         self.config.measurements[str(self.config.selected_dib)]["results"].append(ew)
 
         # if there are minima with the same value, the first will be selected.
