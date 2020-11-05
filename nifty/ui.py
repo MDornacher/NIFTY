@@ -88,6 +88,7 @@ class PlotUI:
             self.ax1.axvspan(self.config.x_range_max, self.config.xs.max(), alpha=0.15, color='black')
 
         # TODO: those limits are just temporarily
+        self.ax1.set_xlim([self.config.xs.min(), self.config.xs.max()])
         self.ax1.set_ylim([-0.2, 1.7])
 
     def reset_plot_middle(self):
@@ -110,6 +111,9 @@ class PlotUI:
 
         if self.config.stellar_lines is not None:
             self.plot_stellar_lines(self.ax2)
+
+        self.ax2.set_xlim(self.config.xs[self.config.masks["data"]].min(),
+                          self.config.xs[self.config.masks["data"]].max())
 
     def reset_plot_bottom(self):
         # TODO: should get some mask independent xlim
@@ -134,6 +138,9 @@ class PlotUI:
                           '-', color='C0')
             # "block" third plot if no fit
             self.span_ew.set_active(False)
+
+        self.ax3.set_xlim(self.config.xs[self.config.masks["data"]].min(),
+                          self.config.xs[self.config.masks["data"]].max())
 
         self.plot_dibs(self.ax3)
 
@@ -187,8 +194,11 @@ class PlotUI:
         ew = sum(diff)
         self.config.measurements[str(self.config.selected_dib)]["results"].append(ew)
 
+        # if there are minima with the same value, the first will be selected.
+        # this might result in some (small) bias, but for now I think this will be fine (hopefully)
         mode = self.config.xs[indmin:indmax][np.argmin(self.config.ys_norm[indmin:indmax])]
         self.config.measurements[str(self.config.selected_dib)]["mode"].append(mode)
+        print(mode)
 
         ew_range = [self.config.xs[indmin], self.config.xs[indmax]]
         self.config.measurements[str(self.config.selected_dib)]["range"].append(ew_range)
