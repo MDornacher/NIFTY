@@ -155,15 +155,12 @@ class PlotUI:
         # get x and y values of selection
         indmin, indmax = np.searchsorted(self.config.xs, (xmin, xmax))
         indmin = max(0, indmin - 2)
-        indmax = min(len(self.config.xs) - 1, indmax)
+        indmax = min(self.config.xs.size - 1, indmax)
+        self.config.fit_indices.update(range(indmin, indmax))
 
-        thisx = self.config.xs[indmin:indmax]
-        thisy = self.config.ys[indmin:indmax]
-
-        # append to fit region and attempt to fit
-        # TODO: only add points once, don't double add them if they are selected again
-        self.config.xs_fit_data = np.append(thisx, self.config.xs_fit_data)
-        self.config.ys_fit_data = np.append(thisy, self.config.ys_fit_data)
+        # apply new fit indices to xs and ys to get fit data
+        self.config.xs_fit_data = np.take(self.config.xs, sorted(list(self.config.fit_indices)))
+        self.config.ys_fit_data = np.take(self.config.ys, sorted(list(self.config.fit_indices)))
         # noinspection PyTupleAssignmentBalance
         self.config.slope, self.config.intercept = np.polyfit(self.config.xs_fit_data, self.config.ys_fit_data, 1)
         self.config.ys_fit = np.array([self.config.slope * x + self.config.intercept for x in self.config.xs])

@@ -31,6 +31,7 @@ class PlotConfig:
         # parameter for norm plot
         self.slope = None
         self.intercept = None
+        self.fit_indices = set()
         self.xs_fit_data = np.array([])
         self.ys_fit_data = np.array([])
         self.ys_fit = np.array([])
@@ -104,6 +105,7 @@ class PlotConfig:
     def reset_fit(self):
         self.slope = None
         self.intercept = None
+        self.fit_indices = set()
         self.xs_fit_data = np.array([])
         self.ys_fit_data = np.array([])
         self.ys_fit = np.array([])
