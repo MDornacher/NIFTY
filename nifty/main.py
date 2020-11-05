@@ -82,7 +82,7 @@ def measurement_mode():
                             xs_ref=xs_ref_trimmed, ys_ref=ys_ref_trimmed,
                             stellar_lines=stellar_lines)
 
-        title = f"[ {i} / {len(args.input)}] {os.path.basename(selected_input)}"
+        title = f"[ {i + 1} / {len(args.input)}] {os.path.basename(selected_input)}"
         PlotUI(config, args.output, measurements, title)
         # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
         # TODO: additional console for LOGGER
