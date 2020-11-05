@@ -1,8 +1,7 @@
 import logging
 
 import numpy as np
-from scipy import signal
-from PyAstronomy import pyasl
+from PyAstronomy import pyasl  # TODO: replace me?
 
 LOGGER = logging.getLogger(__name__)
 RANGE_STEP_SIZE = 0.1
@@ -13,19 +12,17 @@ VELOCITY_SHIFT_STEP_SIZE = 5  # km/s
 class PlotConfig:
     def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None, stellar_lines=None):
         # parse parameters
-        # TODO: distinguish between missing xs/ys and missing dibs_selection
-        if any((xs is None, ys is None, dibs is None)):
-            self.create_spectrum()
-            self.xs = np.copy(self.xs_base)
-            self.ys = np.copy(self.ys_base)
-        else:
-            self.xs_base = xs
-            self.ys_base = ys
-            self.dibs = dibs
-            self.xs = np.copy(self.xs_base)
-            self.ys = np.copy(self.ys_base)
+        self.xs_base = xs
+        self.ys_base = ys
+        self.dibs = dibs
+        self.xs = np.copy(self.xs_base)
+        self.ys = np.copy(self.ys_base)
         if xs_ref is None or ys_ref is None:
             self.ref_data = False
+            self.xs_ref_base = None
+            self.ys_ref_base = None
+            self.xs_ref = None
+            self.ys_ref = None
         else:
             self.ref_data = True
             self.xs_ref_base = xs_ref
@@ -98,30 +95,6 @@ class PlotConfig:
             self.masks["stellar_lines"] = (self.stellar_lines > self.x_range_min) & \
                                           (self.stellar_lines < self.x_range_max)
 
-    def create_spectrum(self, x_range=(100, 200), sigma_range=(1, 5), strength_range=(0, 1), number_of_values=300,
-                        number_of_dibs=3, sn=10):
-        if x_range is None:
-            x_range_min, x_range_max = (100, 500)
-        else:
-            x_range_min, x_range_max = x_range
-
-        self.xs_base = np.linspace(x_range_min, x_range_max, number_of_values)
-        noise = np.random.rand(self.xs_base.size)
-        self.ys_base = 1 + noise / sn - np.mean(noise / sn)
-
-        sigma_min, sigma_max = sigma_range
-        strength_min, strength_max = strength_range
-        self.dibs = []
-        for i in range(number_of_dibs):
-            sigma = sigma_min + np.random.rand() * sigma_max
-            strength = strength_min + np.random.rand() * strength_max
-            gaussian = signal.gaussian(number_of_values * 2, sigma)
-            dib_index = int(np.random.rand() * number_of_values)
-            self.dibs.append(self.xs_base[dib_index])
-            self.ys_base = self.ys_base - strength * gaussian[number_of_values - dib_index:2*number_of_values - dib_index]
-        self.dibs.sort()
-        self.dibs = np.array(self.dibs)
-
     def reset_fit(self):
         self.slope = None
         self.intercept = None
@@ -145,6 +118,7 @@ class PlotConfig:
     def decrease_x_range(self, step_size=RANGE_STEP_SIZE):
         self.x_range_factor *= 1 - step_size
 
+    # TODO: add some catch in case the range is shifted completely beyond the spectrum
     def shift_x_range_up(self):
         shift = (self.x_range_max - self.x_range_min) * RANGE_SHIFT_SIZE
         self.x_range_shift += shift

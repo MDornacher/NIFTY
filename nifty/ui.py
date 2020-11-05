@@ -13,7 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class PlotUI:
-    def __init__(self, config, output_file, measurements=None, title=None):
+    def __init__(self, config, output_file, measurements=None, title=None, file_names=None):
         # parse input
         self.config = config
         if measurements is not None:
@@ -24,6 +24,7 @@ class PlotUI:
         # create figure
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6))  # , constrained_layout=True)
         self.fig.canvas.set_window_title('NIFTY')
+        # TODO: use file_names instead if available
         if title is not None:
             self.fig.suptitle(title)  # TODO: fig title is fig centered while ax titles are ax centered => unaligned
         plt.get_current_fig_manager().window.wm_iconbitmap("icon.ico")
@@ -170,14 +171,15 @@ class PlotUI:
         # redraw relevant subplots
         self.reset_plot_middle()
         self.plot_fit_data()
-        # self.ax2.legend()
+        # self.ax2.legend()  # TODO: write legend for middle plot
         self.reset_plot_bottom()
         self.fig.canvas.draw()
 
     def plot_fit_data(self):
-        self.ax2.plot(self.config.xs[self.config.masks["data"]],
-                      self.config.ys_fit[self.config.masks["data"]],
-                      '-', color='k', alpha=0.5, label='k={:6.6f}'.format(self.config.slope))
+        # TODO: maybe it's best to remove this for a better overview
+        # self.ax2.plot(self.config.xs[self.config.masks["data"]],
+        #               self.config.ys_fit[self.config.masks["data"]],
+        #               '-', color='k', alpha=0.5, label='k={:6.6f}'.format(self.config.slope))
         self.ax2.plot(self.config.xs_fit_data,
                       self.config.ys_fit_data,
                       'o', color='C1', alpha=0.5)
@@ -194,16 +196,17 @@ class PlotUI:
 
         # if there are minima with the same value, the first will be selected.
         # this might result in some (small) bias, but for now I think this will be fine (hopefully)
+        # TODO: apply some smoothing on spectrum in selected range and use that to find minima
+        # TODO: mode is not a good name for this parameter
         mode = self.config.xs[indmin:indmax][np.argmin(self.config.ys_norm[indmin:indmax])]
         self.config.measurements[str(self.config.selected_dib)]["mode"].append(mode)
-        print(mode)
 
         ew_range = [self.config.xs[indmin], self.config.xs[indmax]]
         self.config.measurements[str(self.config.selected_dib)]["range"].append(ew_range)
 
         self.reset_plot_bottom()
         self.plot_ew_data(indmin, indmax, ew)
-        # self.ax3.legend()
+        # self.ax3.legend()  # TODO: write legend for bottom plot
         self.fig.canvas.draw()
 
     def plot_ew_data(self, indmin, indmax, ew):

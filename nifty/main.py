@@ -9,6 +9,7 @@ from nifty.io import (INPUT_TYPES, load_features, load_measurements,
                       load_spectrum, load_stellar_lines,
                       match_spectrum_unit_to_features, trim_features,
                       trim_spectrum)
+from nifty.synth import create_spectrum
 from nifty.prints import (print_banner, print_demo_message,
                           print_summary_of_input_parameters)
 from nifty.ui import PlotUI
@@ -28,7 +29,8 @@ def main():
 
 def demo_mode():
     print_demo_message()
-    config = PlotConfig()
+    xs, ys, dibs = create_spectrum()
+    config = PlotConfig(xs=xs, ys=ys, dibs=dibs)
     results = None
     output_file = "demo_measurements.json"
     PlotUI(config, output_file, results, title="Demo Mode of NIFTY")
@@ -82,8 +84,10 @@ def measurement_mode():
                             xs_ref=xs_ref_trimmed, ys_ref=ys_ref_trimmed,
                             stellar_lines=stellar_lines)
 
-        title = f"[ {i + 1} / {len(args.input)}] {os.path.basename(selected_input)}"
-        PlotUI(config, args.output, measurements, title)
+        object_name, _ = os.path.splitext(os.path.basename(selected_input))
+        title = f"[ {i + 1} / {len(args.input)}] {object_name}"
+        file_names = {"data": selected_input, "ref": args.ref}
+        PlotUI(config, args.output, measurements, title, file_names)
         # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
         # TODO: additional console for LOGGER
         args.output = None  # TODO: this is a bad fix for multifile input

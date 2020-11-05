@@ -1,5 +1,6 @@
 # sometimes when adding a second fit region
 # might be related to this issue: https://github.com/numpy/numpy/issues/16744
+# stackoverflow discussion: https://stackoverflow.com/questions/63761366/numpy-linalg-linalgerror-svd-did-not-converge-in-linear-least-squares-on-first
 Exception in Tkinter callback
 Traceback (most recent call last):
   File "G:\Anaconda3\envs\NIFTY-env\lib\tkinter\__init__.py", line 1883, in __call__
