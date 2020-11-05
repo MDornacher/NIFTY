@@ -4,6 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.widgets import SpanSelector, TextBox
 
+from nifty.config import VELOCITY_SHIFT_STEP_SIZE, RANGE_STEP_SIZE
 from nifty.io import save_measurements
 from nifty.prints import (print_measurements,
                           print_navigation_keyboard_shortcuts)
@@ -256,6 +257,9 @@ class PlotUI:
         ax.plot(0.05, 0.05, marker="o", markersize="15", color=color, markeredgewidth=1., markeredgecolor="k", transform=ax.transAxes)
 
     def on_press(self, event):
+        # TODO: update print_navigation_keyboard_shortcuts with new shortcuts
+        # TODO: find faster solution for lots of ifs at every key press
+        # TODO: some shortcuts might interfere with os shortcuts
         if hasattr(self, "text_box") and self.text_box.get_active():
             print("textbox is active")
             return
@@ -267,11 +271,23 @@ class PlotUI:
             return
         if event.key == 'left':
             self.config.previous_dib()
+            self.config.reset_x_range_shift()
             self.config.update_x_range()
             self.reset_plot()
             return
         if event.key == 'right':
             self.config.next_dib()
+            self.config.reset_x_range_shift()
+            self.config.update_x_range()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+left':
+            self.config.shift_x_range_down()
+            self.config.update_x_range()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+right':
+            self.config.shift_x_range_up()
             self.config.update_x_range()
             self.reset_plot()
             return
@@ -283,6 +299,14 @@ class PlotUI:
             self.config.shift_data_down()
             self.reset_plot()
             return
+        if event.key == 'ctrl+up':
+            self.config.shift_data_up(5 * VELOCITY_SHIFT_STEP_SIZE)
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+down':
+            self.config.shift_data_down(5 * VELOCITY_SHIFT_STEP_SIZE)
+            self.reset_plot()
+            return
         if event.key == 'alt+up':
             self.config.shift_ref_data_up()
             self.reset_plot()
@@ -291,6 +315,13 @@ class PlotUI:
             self.config.shift_ref_data_down()
             self.reset_plot()
             return
+        if event.key == 'ctrl+alt+up':
+            self.config.shift_ref_data_up(5 * VELOCITY_SHIFT_STEP_SIZE)
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+alt+down':
+            self.config.shift_ref_data_down(5 * VELOCITY_SHIFT_STEP_SIZE)
+            self.reset_plot()
         if event.key == '+':
             self.config.decrease_x_range()
             self.config.update_x_range()
@@ -298,6 +329,16 @@ class PlotUI:
             return
         if event.key == '-':
             self.config.increase_x_range()
+            self.config.update_x_range()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl++':
+            self.config.decrease_x_range(5 * RANGE_STEP_SIZE)
+            self.config.update_x_range()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+-':
+            self.config.increase_x_range(5 * RANGE_STEP_SIZE)
             self.config.update_x_range()
             self.reset_plot()
             return

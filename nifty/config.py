@@ -5,6 +5,8 @@ from scipy import signal
 from PyAstronomy import pyasl
 
 LOGGER = logging.getLogger(__name__)
+RANGE_STEP_SIZE = 0.1
+RANGE_SHIFT_SIZE = 0.2
 VELOCITY_SHIFT_STEP_SIZE = 5  # km/s
 
 
@@ -14,6 +16,8 @@ class PlotConfig:
         # TODO: distinguish between missing xs/ys and missing dibs_selection
         if any((xs is None, ys is None, dibs is None)):
             self.create_spectrum()
+            self.xs = np.copy(self.xs_base)
+            self.ys = np.copy(self.ys_base)
         else:
             self.xs_base = xs
             self.ys_base = ys
@@ -54,6 +58,7 @@ class PlotConfig:
         # derived parameters
         self.x_range_min = None
         self.x_range_max = None
+        self.x_range_shift = 0.
         self.update_x_range()
 
         # create masks
@@ -73,9 +78,12 @@ class PlotConfig:
     def reset_measurements(self):
         self.measurements = {str(dib): {"results": [], "notes": "", "marked": False, "mode": [], "range": []} for dib in self.dibs}
 
+    def reset_x_range_shift(self):
+        self.x_range_shift = 0.
+
     def update_x_range(self):
-        self.x_range_min = self.selected_dib * (1 - self.x_range_factor)
-        self.x_range_max = self.selected_dib * (1 + self.x_range_factor)
+        self.x_range_min = self.selected_dib * (1 - self.x_range_factor) + self.x_range_shift
+        self.x_range_max = self.selected_dib * (1 + self.x_range_factor) + self.x_range_shift
 
     # noinspection PyTypeChecker
     def calculate_masks(self):
@@ -131,59 +139,41 @@ class PlotConfig:
         self.selection = (self.selection - 1) % len(self.dibs)
         self.selected_dib = self.dibs[self.selection]
 
-    def increase_x_range(self):
-        self.x_range_factor *= 1.1
+    def increase_x_range(self, step_size=RANGE_STEP_SIZE):
+        self.x_range_factor *= 1 + step_size
 
-    def decrease_x_range(self):
-        self.x_range_factor *= 0.9
+    def decrease_x_range(self, step_size=RANGE_STEP_SIZE):
+        self.x_range_factor *= 1 - step_size
 
-    def increase_y_range(self):
-        self.y_range_factor += 0.1
+    def shift_x_range_up(self):
+        shift = (self.x_range_max - self.x_range_min) * RANGE_SHIFT_SIZE
+        self.x_range_shift += shift
 
-    def decrease_y_range(self):
-        self.y_range_factor -= 0.1
+    def shift_x_range_down(self):
+        shift = (self.x_range_max - self.x_range_min) * RANGE_SHIFT_SIZE
+        self.x_range_shift -= shift
 
-    def shift_data_up(self):
-        self.velocity_shifts["data"] += VELOCITY_SHIFT_STEP_SIZE
+    def shift_data_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
+        self.velocity_shifts["data"] += step_size
         self.apply_velocity_shifts()
 
-    def shift_data_down(self):
-        self.velocity_shifts["data"] -= VELOCITY_SHIFT_STEP_SIZE
+    def shift_data_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
+        self.velocity_shifts["data"] -= step_size
         self.apply_velocity_shifts()
 
-    def shift_ref_data_up(self):
+    def shift_ref_data_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
         if not self.ref_data:
             LOGGER.info("No ref data available for shifting.")
             return
-        # step_size = self.xs_ref[1] - self.xs_ref[0]
-        # self.xs_ref += step_size
-        self.velocity_shifts["ref"] += VELOCITY_SHIFT_STEP_SIZE
+        self.velocity_shifts["ref"] += step_size
         self.apply_velocity_shifts()
 
-    def shift_ref_data_down(self):
+    def shift_ref_data_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
         if not self.ref_data:
             LOGGER.info("No ref data available for shifting.")
             return
-        # step_size = self.xs[1] - self.xs[0]
-        # self.xs_ref -= step_size
-        self.velocity_shifts["ref"] -= VELOCITY_SHIFT_STEP_SIZE
+        self.velocity_shifts["ref"] -= step_size
         self.apply_velocity_shifts()
-
-    def shift_spectral_lines_up(self):
-        # TODO: REMOVE ME
-        if self.stellar_lines is None:
-            LOGGER.info("No stellar lines available for shifting.")
-            return
-        step_size = self.xs[1] - self.xs[0]
-        self.stellar_lines += step_size
-
-    def shift_spectral_lines_down(self):
-        # TODO: REMOVE ME
-        if self.stellar_lines is None:
-            LOGGER.info("No stellar lines available for shifting.")
-            return
-        step_size = self.xs[1] - self.xs[0]
-        self.stellar_lines -= step_size
 
     def apply_velocity_shifts(self):
         self.ys, self.xs = pyasl.dopplerShift(self.xs_base, self.ys_base,
