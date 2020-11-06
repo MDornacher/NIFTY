@@ -146,9 +146,10 @@ def load_measurements(input_file):
     return measurements
 
 
-def save_measurements(results, output_file):
+def save_measurements(measurements, output_file):
+    # TODO: include doppler shifts
     with open(output_file, 'w') as f:
-        json.dump(results, f)
+        json.dump(measurements, f)
 
 
 def load_stellar_lines(input_files):

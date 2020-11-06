@@ -86,7 +86,8 @@ def measurement_mode():
 
         object_name, _ = os.path.splitext(os.path.basename(selected_input))
         title = f"[ {i + 1} / {len(args.input)}] {object_name}"
-        file_names = {"data": selected_input, "ref": args.ref}
+        file_names = {"data": os.path.basename(selected_input),
+                      "ref": os.path.basename(args.ref)}
         PlotUI(config, args.output, measurements, title, file_names)
         # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
         # TODO: additional console for LOGGER

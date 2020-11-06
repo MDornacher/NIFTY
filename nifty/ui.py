@@ -3,8 +3,9 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.widgets import SpanSelector, TextBox
+from matplotlib.offsetbox import AnchoredText
 
-from nifty.config import VELOCITY_SHIFT_STEP_SIZE, RANGE_STEP_SIZE
+from nifty.config import VELOCITY_SHIFT_STEP_SIZE, RANGE_STEP_SIZE, RANGE_SHIFT_SIZE
 from nifty.io import save_measurements
 from nifty.prints import (print_measurements,
                           print_navigation_keyboard_shortcuts)
@@ -20,6 +21,7 @@ class PlotUI:
             self.config.measurements = measurements
             self.validate_measurements()
         self.output_file = output_file
+        self.file_names = file_names
 
         # create figure
         self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, figsize=(8, 6))  # , constrained_layout=True)
@@ -63,7 +65,6 @@ class PlotUI:
             self.config.reset_measurements()
 
     def reset_plot(self):
-        self.config.reset_fit()
         self.config.calculate_masks()
 
         self.reset_plot_top()
@@ -71,7 +72,6 @@ class PlotUI:
         self.reset_plot_bottom()
 
         self.reset_textbox()
-
         self.fig.canvas.draw()
 
     def reset_plot_top(self):
@@ -79,11 +79,14 @@ class PlotUI:
         self.ax1.set_title('Full Spectrum')
         self.ax1.grid()
         if self.config.ref_data:
-            self.ax1.plot(self.config.xs_ref, self.config.ys_ref, '-', color='k', alpha=0.5)
-        self.ax1.plot(self.config.xs, self.config.ys, '-', color='C0')
-        self.ax1.plot(self.config.dibs, [1.1] * len(self.config.dibs), 'k|')
-        self.ax1.plot(self.config.selected_dib, [1.1], 'rv')
-        # self.ax1.axvspan(self.config.x_range_min, self.config.x_range_max, alpha=0.3, color='yellow')
+            ref_label = f'Reference Spectrum ({self.file_names["ref"]})' if self.file_names is not None else 'Reference Spectrum'
+            self.ax1.plot(self.config.xs_ref, self.config.ys_ref, '--', color='k', alpha=0.5,
+                          label=ref_label)
+        data_label = f'Test Spectrum ({self.file_names["data"]})' if self.file_names is not None else 'Test Spectrum'
+        self.ax1.plot(self.config.xs, self.config.ys, '-', color='C0',
+                      label=data_label)
+        self.ax1.plot(self.config.dibs, [1.1] * len(self.config.dibs), 'k|', label='Test Features')
+        self.ax1.plot(self.config.selected_dib, [1.1], 'rv', label='Selected Feature')
         if self.config.x_range_min > self.config.xs.min():
             self.ax1.axvspan(self.config.xs.min(), self.config.x_range_min, alpha=0.15, color='black')
         if self.config.x_range_max < self.config.xs.max():
@@ -92,30 +95,37 @@ class PlotUI:
         # TODO: those limits are just temporarily
         self.ax1.set_xlim([self.config.xs.min(), self.config.xs.max()])
         self.ax1.set_ylim([-0.2, 1.7])
+        self.ax1.legend(loc='lower right')  # ncol=5, mode='expand'
 
     def reset_plot_middle(self):
-        # TODO: should get some mask independent xlim
         # TODO: overwrite ylim to better zoom into feature
         self.ax2.clear()
-        self.ax2.set_title('DIB Region')
+        self.ax2.set_title('Feature Region')
         self.ax2.grid()
 
         if self.config.ref_data:
             self.ax2.plot(self.config.xs_ref[self.config.masks["ref"]],
                           self.config.ys_ref[self.config.masks["ref"]],
-                          '-', color='k', alpha=0.5)
+                          '--', color='k', alpha=0.5, label='Reference Spectrum')
 
         self.ax2.plot(self.config.xs[self.config.masks["data"]],
                       self.config.ys[self.config.masks["data"]],
-                      '-', color='C0')
+                      '-', color='C0', label='Test Spectrum')
 
         self.plot_dibs(self.ax2)
 
         if self.config.stellar_lines is not None:
             self.plot_stellar_lines(self.ax2)
 
+        if self.config.ys_norm.size > 0:
+            self.plot_fit_data(self.ax2)
+
+        if any(self.config.velocity_shifts.values()):
+            self.plot_doppler_shift(self.ax2)
+
         self.ax2.set_xlim(self.config.xs[self.config.masks["data"]].min(),
                           self.config.xs[self.config.masks["data"]].max())
+        self.ax2.legend(loc='lower right')
 
     def reset_plot_bottom(self):
         # TODO: should get some mask independent xlim
@@ -126,18 +136,18 @@ class PlotUI:
         if self.config.ref_data:
             self.ax3.plot(self.config.xs_ref[self.config.masks["ref"]],
                           self.config.ys_ref[self.config.masks["ref"]],
-                          '-', color='k', alpha=0.5)
+                          '--', color='k', alpha=0.5, label='Reference Spectrum')
 
         if self.config.ys_norm.size > 0:
             self.ax3.plot(self.config.xs[self.config.masks["data"]],
                           self.config.ys_norm[self.config.masks["data"]],
-                          '-', color='C0')
+                          '-', color='C0', label='Normed Test Spectrum')
             self.span_ew.set_active(True)
 
         else:
             self.ax3.plot(self.config.xs[self.config.masks["data"]],
                           self.config.ys[self.config.masks["data"]],
-                          '-', color='C0')
+                          '-', color='C0', label='Test Spectrum')
             # "block" third plot if no fit
             self.span_ew.set_active(False)
 
@@ -149,9 +159,12 @@ class PlotUI:
         if self.config.stellar_lines is not None:
             self.plot_stellar_lines(self.ax3)
 
-        self.plot_notes(self.ax3)
-        self.plot_results(self.ax3)
+        if self.config.measurements[str(self.config.selected_dib)]['notes']:
+            self.plot_notes(self.ax3)
+        if self.config.measurements[str(self.config.selected_dib)]['results']:
+            self.plot_results(self.ax3)
         self.plot_marked(self.ax3)
+        self.ax3.legend(loc='lower right')
 
     def on_select_fit_range(self, xmin, xmax):
         # get x and y values of selection
@@ -170,19 +183,18 @@ class PlotUI:
 
         # redraw relevant subplots
         self.reset_plot_middle()
-        self.plot_fit_data()
         # self.ax2.legend()  # TODO: write legend for middle plot
         self.reset_plot_bottom()
         self.fig.canvas.draw()
 
-    def plot_fit_data(self):
+    def plot_fit_data(self, ax):
         # TODO: maybe it's best to remove this for a better overview
         # self.ax2.plot(self.config.xs[self.config.masks["data"]],
         #               self.config.ys_fit[self.config.masks["data"]],
-        #               '-', color='k', alpha=0.5, label='k={:6.6f}'.format(self.config.slope))
-        self.ax2.plot(self.config.xs_fit_data,
-                      self.config.ys_fit_data,
-                      'o', color='C1', alpha=0.5)
+        #               '-', color='k', alpha=0.5)
+        ax.plot(self.config.xs_fit_data,
+                self.config.ys_fit_data,
+                'o', color='C1', alpha=0.5, label='Fitted Points')
 
     def on_select_ew_range(self, xmin, xmax):
         # get x and y values of selection
@@ -206,14 +218,14 @@ class PlotUI:
         self.config.measurements[str(self.config.selected_dib)]["range"].append(ew_range)
 
         self.reset_plot_bottom()
-        self.plot_ew_data(indmin, indmax, ew)
+        self.plot_ew_data(self.ax3, indmin, indmax, ew)
         # self.ax3.legend()  # TODO: write legend for bottom plot
         self.fig.canvas.draw()
 
-    def plot_ew_data(self, indmin, indmax, ew):
-        self.ax3.fill_between(self.config.xs, self.config.ys_norm, 1,
-                              where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
-                              color='C2', alpha=0.5, label='EW={:6.6f}'.format(ew))
+    def plot_ew_data(self, ax, indmin, indmax, ew):
+        ax.fill_between(self.config.xs, self.config.ys_norm, 1,
+                        where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
+                        color='C2', alpha=0.5, label="Feature Integral")  # TODO: label does not work
 
     def submit_text(self, text):
         self.config.measurements[str(self.config.selected_dib)]["notes"] = text
@@ -221,7 +233,8 @@ class PlotUI:
         self.text_box.color = '.95'
         self.text_box.hovercolor = '.95'
         self.reset_plot_bottom()
-        self.plot_notes(self.ax3)
+        if self.config.measurements[str(self.config.selected_dib)]['notes']:
+            self.plot_notes(self.ax3)
         self.fig.canvas.draw()
         self.text_box.set_active(False)
 
@@ -234,31 +247,44 @@ class PlotUI:
         self.text_box.set_val(self.config.measurements[str(self.config.selected_dib)]["notes"])
 
     def plot_dibs(self, ax):
-        for dib in self.config.dibs[self.config.masks["dibs"]]:
-            ax.axvline(dib, color='C3', alpha=0.5)
-        ax.axvline(self.config.selected_dib, color='C1', alpha=0.5, linewidth=2)
-        ax.axvline(self.config.selected_dib, color='C3', alpha=0.5)
+        # the enumerate is used to only plot a legend for the first dib
+        for i, dib in enumerate(self.config.dibs[self.config.masks["dibs"]]):
+            ax.axvline(dib, linestyle='-.', color='C3', alpha=0.5, label='Test Features' if i == 0 else None)
+        # ax.axvline(self.config.selected_dib, linestyle='-', color='C1', alpha=0.5, linewidth=4, label='Selected Feature')
+        ax.axvline(self.config.selected_dib, linestyle='-.', color='C3', linewidth=4., alpha=0.5, label='Selected Feature')
 
     def plot_stellar_lines(self, ax):
-        for stellar_line in self.config.stellar_lines[self.config.masks["stellar_lines"]]:
-            ax.axvline(stellar_line, color='C4', alpha=0.5)
+        # the enumerate is used to only plot a legend for the first stellar line
+        for i, stellar_line in enumerate(self.config.stellar_lines[self.config.masks["stellar_lines"]]):
+            ax.axvline(stellar_line, linestyle=':', color='C4', linewidth=2., alpha=0.5, label='Stellar Lines' if i == 0 else None)
+
+    def plot_doppler_shift(self, ax):
+        # bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)  # TODO: make more "modern" with these props
+        s = f'{"Test Spectrum Shift":>25}: {self.config.velocity_shifts["data"]:5} km/s'
+        if self.config.ref_data:
+            s += f'\n{"Reference Spectrum Shift":>25}: {self.config.velocity_shifts["ref"]:5} km/s'
+        anchored_text = AnchoredText(s, loc='upper right', prop={'family': 'monospace'})
+        ax.add_artist(anchored_text)
 
     def plot_notes(self, ax):
-        bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)
+        # bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)
         s = self.config.measurements[str(self.config.selected_dib)]['notes'].strip()
-        ax.text(.05, .95, s, transform=ax.transAxes, ha="left", va="top", bbox=bbox_props)
+        anchored_text = AnchoredText(s, loc='upper left', prop={'family': 'monospace'})
+        ax.add_artist(anchored_text)
 
     def plot_results(self, ax):
-        bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)
+        # bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)
         s = "\n".join([str(result) for result in self.config.measurements[str(self.config.selected_dib)]['results']])
-        ax.text(.95, .95, s, transform=ax.transAxes, ha="right", va="top", bbox=bbox_props)
+        anchored_text = AnchoredText(s, loc='upper right', prop={'family': 'monospace'})
+        ax.add_artist(anchored_text)
 
     def plot_marked(self, ax):
-        if not self.config.measurements[str(self.config.selected_dib)]["marked"]:
-            color = "gray"
+        if self.config.measurements[str(self.config.selected_dib)]["marked"]:
+            s = "*"
         else:
-            color = "C3"
-        ax.plot(0.05, 0.05, marker="o", markersize="15", color=color, markeredgewidth=1., markeredgecolor="k", transform=ax.transAxes)
+            s = " "
+        anchored_text = AnchoredText(s, loc='lower left', prop={'family': 'monospace'})
+        ax.add_artist(anchored_text)
 
     def on_press(self, event):
         # TODO: update print_navigation_keyboard_shortcuts with new shortcuts
@@ -277,21 +303,33 @@ class PlotUI:
             self.config.previous_dib()
             self.config.reset_x_range_shift()
             self.config.update_x_range()
+            self.config.reset_fit()
             self.reset_plot()
             return
         if event.key == 'right':
             self.config.next_dib()
             self.config.reset_x_range_shift()
             self.config.update_x_range()
+            self.config.reset_fit()
             self.reset_plot()
             return
-        if event.key == 'ctrl+left':
+        if event.key == 'alt+left':
             self.config.shift_x_range_down()
             self.config.update_x_range()
             self.reset_plot()
             return
-        if event.key == 'ctrl+right':
+        if event.key == 'alt+right':
             self.config.shift_x_range_up()
+            self.config.update_x_range()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+alt+left':
+            self.config.shift_x_range_down(3 * RANGE_SHIFT_SIZE)
+            self.config.update_x_range()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+alt+right':
+            self.config.shift_x_range_up(3 * RANGE_SHIFT_SIZE)
             self.config.update_x_range()
             self.reset_plot()
             return
@@ -348,7 +386,8 @@ class PlotUI:
             return
         if event.key == 'm':
             self.toggle_measurement_mark()
-            self.plot_marked(self.ax3)
+            self.reset_plot_bottom()
+            # self.plot_marked(self.ax3)
             self.fig.canvas.draw()
             return
         if event.key == 'n':
@@ -368,7 +407,7 @@ class PlotUI:
             # TODO: 'Process finished with exit code -1073741819 (0xC0000005)' but closing it with X button works fine
             plt.close('all')
             return
-        if event.key == 'alt':
+        if event.key == 'alt' or event.key == 'control':
             return
         print(f"Unrecognized keyboard shortcut ({event.key}). Press 'h' for full list of shortcuts.")
 

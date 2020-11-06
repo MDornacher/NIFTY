@@ -5,8 +5,8 @@ from PyAstronomy import pyasl  # TODO: replace me?
 
 LOGGER = logging.getLogger(__name__)
 RANGE_STEP_SIZE = 0.1
-RANGE_SHIFT_SIZE = 0.2
-VELOCITY_SHIFT_STEP_SIZE = 5  # km/s
+RANGE_SHIFT_SIZE = 0.1
+VELOCITY_SHIFT_STEP_SIZE = 1  # km/s
 
 
 class PlotConfig:
@@ -119,12 +119,12 @@ class PlotConfig:
         self.x_range_factor *= 1 - step_size
 
     # TODO: add some catch in case the range is shifted completely beyond the spectrum
-    def shift_x_range_up(self):
-        shift = (self.x_range_max - self.x_range_min) * RANGE_SHIFT_SIZE
+    def shift_x_range_up(self, step_size=RANGE_SHIFT_SIZE):
+        shift = (self.x_range_max - self.x_range_min) * step_size
         self.x_range_shift += shift
 
-    def shift_x_range_down(self):
-        shift = (self.x_range_max - self.x_range_min) * RANGE_SHIFT_SIZE
+    def shift_x_range_down(self, step_size=RANGE_SHIFT_SIZE):
+        shift = (self.x_range_max - self.x_range_min) * step_size
         self.x_range_shift -= shift
 
     def shift_data_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
