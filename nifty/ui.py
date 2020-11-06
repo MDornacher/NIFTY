@@ -6,8 +6,8 @@ from matplotlib.widgets import SpanSelector, TextBox
 from matplotlib.offsetbox import AnchoredText
 
 from nifty.config import VELOCITY_SHIFT_STEP_SIZE, RANGE_STEP_SIZE, RANGE_SHIFT_SIZE
-from nifty.io import save_measurements
-from nifty.prints import (print_measurements,
+from nifty.io import save_data
+from nifty.prints import (print_measurements, print_velocity_shifts,
                           print_navigation_keyboard_shortcuts)
 
 LOGGER = logging.getLogger(__name__)
@@ -400,8 +400,9 @@ class PlotUI:
             return
         if event.key == ' ':
             LOGGER.info(f'Saving measurements to {self.output_file}')
-            save_measurements(self.config.measurements, self.output_file)
+            save_data(self.config.measurements, self.output_file)
             print_measurements(self.config.measurements)
+            print_velocity_shifts(self.config.velocity_shifts)
             return
         if event.key == 'escape':
             # TODO: 'Process finished with exit code -1073741819 (0xC0000005)' but closing it with X button works fine

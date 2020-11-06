@@ -71,3 +71,9 @@ def print_measurements(measurements):
         print(f'Measurements for {feature}:')
         for key, value in attributes.items():
             print(f'\t{key}: {value}')
+
+
+def print_velocity_shifts(velocity_shifts):
+    print(f'Velocity shifts:')
+    for key, value in velocity_shifts.items():
+        print(print(f'\t{key}: {value}'))

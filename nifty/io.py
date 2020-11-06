@@ -140,16 +140,16 @@ def match_spectrum_unit_to_features(xs, features):
                      f'10**{list(f_unit_range)}')
 
 
-def load_measurements(input_file):
+def load_data(input_file):
     with open(input_file, 'r') as f:
-        measurements = json.load(f)
-    return measurements
+        data = json.load(f)
+    return data
 
 
-def save_measurements(measurements, output_file):
+def save_data(data, output_file):
     # TODO: include doppler shifts
     with open(output_file, 'w') as f:
-        json.dump(measurements, f)
+        json.dump(data, f)
 
 
 def load_stellar_lines(input_files):

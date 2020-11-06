@@ -5,7 +5,7 @@ import os
 import sys
 
 from nifty.config import PlotConfig
-from nifty.io import (INPUT_TYPES, load_features, load_measurements,
+from nifty.io import (INPUT_TYPES, load_features, load_data,
                       load_spectrum, load_stellar_lines,
                       match_spectrum_unit_to_features, trim_features,
                       trim_spectrum)
@@ -59,7 +59,7 @@ def measurement_mode():
                 LOGGER.info("Processing skipped, because output file already exists")
                 args.output = None  # TODO: this is a bad fix for multifile input
                 continue
-            measurements = load_measurements(args.output)
+            measurements = load_data(args.output)
         else:
             measurements = None
 
