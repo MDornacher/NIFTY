@@ -40,14 +40,17 @@ def measurement_mode():
     args = parse_input()
     args = resolve_input_paths(args)
     validate_parameters(args)
-    print_summary_of_input_parameters(args)
 
     # initialize static parameters
     dibs = load_features(args.features)
     if args.stellar is not None:
+        args = resolve_stellar_paths(args)
+        print(args.stellar)
         stellar_lines = load_stellar_lines(args.stellar)
     else:
         stellar_lines = None
+
+    print_summary_of_input_parameters(args)
 
     for i, selected_input in enumerate(args.input):
         if args.output is None:
@@ -122,12 +125,30 @@ def resolve_input_paths(args):
     return args
 
 
+def resolve_stellar_paths(args):
+    # TODO: unify this with resolving input paths
+    if not isinstance(args.stellar, list):
+        args.stellar = [args.stellar]
+    resolved_stellar_inputs = []
+
+    for stellar_input in args.stellar:
+        if "*" in stellar_input:
+            args.stellar.extend(glob.glob(stellar_input))
+            if not args.stellar:
+                raise ValueError(f'No files found while resolving stellar reference input {stellar_input}')
+        else:
+            resolved_stellar_inputs.append(stellar_input)
+    args.stellar = resolved_stellar_inputs
+    return args
+
+
 def create_output_path(input_path):
     reusable_input_name, _ = os.path.splitext(input_path)
     return reusable_input_name + DEFAULT_NIFTY_OUTPUT_EXTENSION
 
 
 def validate_parameters(args):
+    # TODO: new parameters need to be added
     for selected_input in args.input:
         if not os.path.isfile(selected_input):
             raise ValueError(f'Input "{selected_input}" is not a file.')
