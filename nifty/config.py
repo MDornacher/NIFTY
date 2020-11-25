@@ -73,7 +73,13 @@ class PlotConfig:
         }
 
     def reset_measurements(self):
-        self.measurements = {str(dib): {"results": [], "notes": "", "marked": False, "mode": [], "range": []} for dib in self.dibs}
+        self.measurements = {str(dib): {"ew": [],
+                                        "notes": "",
+                                        "marked": False,
+                                        "mode": [],
+                                        "range": [],
+                                        "fwhm": []}
+                             for dib in self.dibs}
 
     def reset_x_range_shift(self):
         self.x_range_shift = 0.

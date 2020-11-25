@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from matplotlib.widgets import SpanSelector, TextBox
 from matplotlib.offsetbox import AnchoredText
 
+from nifty.calc import lin_interp
 from nifty.config import VELOCITY_SHIFT_STEP_SIZE, RANGE_STEP_SIZE, RANGE_SHIFT_SIZE
 from nifty.io import save_data
 from nifty.prints import (print_measurements, print_velocity_shifts,
@@ -37,8 +38,8 @@ class PlotUI:
         # TODO: add 'close_event' to autosave measurements
         self.span_fit = SpanSelector(self.ax2, self.on_select_fit_range, 'horizontal', useblit=True,
                                      rectprops=dict(alpha=0.5, facecolor='yellow'))
-        self.span_ew = SpanSelector(self.ax3, self.on_select_ew_range, 'horizontal', useblit=True,
-                                    rectprops=dict(alpha=0.5, facecolor='yellow'))
+        self.span_measurement = SpanSelector(self.ax3, self.on_select_measurement_range, 'horizontal', useblit=True,
+                                             rectprops=dict(alpha=0.5, facecolor='yellow'))
 
         # text box widget
         # TODO: the whole textbox is super hacky and some of the settings dont work right yet
@@ -142,14 +143,14 @@ class PlotUI:
             self.ax3.plot(self.config.xs[self.config.masks["data"]],
                           self.config.ys_norm[self.config.masks["data"]],
                           '-', color='C0', label='Normed Test Spectrum')
-            self.span_ew.set_active(True)
+            self.span_measurement.set_active(True)
 
         else:
             self.ax3.plot(self.config.xs[self.config.masks["data"]],
                           self.config.ys[self.config.masks["data"]],
                           '-', color='C0', label='Test Spectrum')
             # "block" third plot if no fit
-            self.span_ew.set_active(False)
+            self.span_measurement.set_active(False)
 
         self.ax3.set_xlim(self.config.xs[self.config.masks["data"]].min(),
                           self.config.xs[self.config.masks["data"]].max())
@@ -161,7 +162,7 @@ class PlotUI:
 
         if self.config.measurements[str(self.config.selected_dib)]['notes']:
             self.plot_notes(self.ax3)
-        if self.config.measurements[str(self.config.selected_dib)]['results']:
+        if self.config.measurements[str(self.config.selected_dib)]['ew']:
             self.plot_results(self.ax3)
         self.plot_marked(self.ax3)
         self.ax3.legend(loc='lower right')
@@ -196,7 +197,7 @@ class PlotUI:
                 self.config.ys_fit_data,
                 'o', color='C1', alpha=0.5, label='Fitted Points')
 
-    def on_select_ew_range(self, xmin, xmax):
+    def on_select_measurement_range(self, xmin, xmax):
         # get x and y values of selection
         indmin, indmax = np.searchsorted(self.config.xs, (xmin, xmax))
         indmin = max(0, indmin - 2)
@@ -205,7 +206,10 @@ class PlotUI:
         absorption_depth = (1 - self.config.ys_norm[indmin:indmax])
         dynamic_pixel_width = self.config.xs[indmin+1:indmax+1] - self.config.xs[indmin:indmax]
         ew = sum(absorption_depth * dynamic_pixel_width)
-        self.config.measurements[str(self.config.selected_dib)]["results"].append(ew)
+        self.config.measurements[str(self.config.selected_dib)]["ew"].append(ew)
+
+        ew_range = [self.config.xs[indmin], self.config.xs[indmax]]
+        self.config.measurements[str(self.config.selected_dib)]["range"].append(ew_range)
 
         # if there are minima with the same value, the first will be selected.
         # this might result in some (small) bias, but for now I think this will be fine (hopefully)
@@ -214,18 +218,35 @@ class PlotUI:
         mode = self.config.xs[indmin:indmax][np.argmin(self.config.ys_norm[indmin:indmax])]
         self.config.measurements[str(self.config.selected_dib)]["mode"].append(mode)
 
-        ew_range = [self.config.xs[indmin], self.config.xs[indmax]]
-        self.config.measurements[str(self.config.selected_dib)]["range"].append(ew_range)
+        half = (1. + min(self.config.ys_norm[indmin:indmax])) / 2.0  # half of absorption depth
+        signs = np.sign(np.add(self.config.ys_norm[indmin:indmax], -half))
+        sign_changes = ((np.roll(signs, 1) - signs) != 0).astype(int)
+        if np.sum(sign_changes) < 2:
+            fwhm = None
+        else:
+            zero_crossings_lower = np.where(signs[0:-2] != signs[1:-1])[0][0]  # first time the sign changes
+            zero_crossings_upper = np.where(signs[0:-2] != signs[1:-1])[-1][-1]  # last time the sign changes
+            hmx = [lin_interp(self.config.xs[indmin:indmax], self.config.ys_norm[indmin:indmax], zero_crossings_lower, half),
+                   lin_interp(self.config.xs[indmin:indmax], self.config.ys_norm[indmin:indmax], zero_crossings_upper, half)]
+            fwhm = hmx[1] - hmx[0]
+        self.config.measurements[str(self.config.selected_dib)]["fwhm"].append(fwhm)
+        if fwhm is None or fwhm == 0:
+            print("FWHM could not be determined.")
 
         self.reset_plot_bottom()
-        self.plot_ew_data(self.ax3, indmin, indmax, ew)
+        self.plot_ew_data(self.ax3, indmin, indmax)
+        if fwhm is not None:
+            self.plot_fwhm_data(self.ax3, hmx, half)
         # self.ax3.legend()  # TODO: write legend for bottom plot
         self.fig.canvas.draw()
 
-    def plot_ew_data(self, ax, indmin, indmax, ew):
+    def plot_ew_data(self, ax, indmin, indmax):
         ax.fill_between(self.config.xs, self.config.ys_norm, 1,
                         where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
                         color='C2', alpha=0.5, label="Feature Integral")  # TODO: label does not work
+
+    def plot_fwhm_data(self, ax, hmx, half):
+        ax.plot(hmx, [half]*2, color="k", alpha=0.5, label="FWHM")  # TODO: label does not work
 
     def submit_text(self, text):
         self.config.measurements[str(self.config.selected_dib)]["notes"] = text
@@ -274,7 +295,7 @@ class PlotUI:
 
     def plot_results(self, ax):
         # bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)
-        s = "\n".join([str(result) for result in self.config.measurements[str(self.config.selected_dib)]['results']])
+        s = "\n".join([str(result) for result in self.config.measurements[str(self.config.selected_dib)]['ew']])
         anchored_text = AnchoredText(s, loc='upper right', prop={'family': 'monospace'})
         ax.add_artist(anchored_text)
 
@@ -297,6 +318,7 @@ class PlotUI:
             print_navigation_keyboard_shortcuts()
             return
         if event.key == 'r':
+            self.config.reset_fit()
             self.reset_plot()
             return
         if event.key == 'left':
@@ -413,10 +435,17 @@ class PlotUI:
         print(f"Unrecognized keyboard shortcut ({event.key}). Press 'h' for full list of shortcuts.")
 
     def delete_last_measurement_result(self):
-        if self.config.measurements[str(self.config.selected_dib)]["results"]:
-            last_measurement = self.config.measurements[str(self.config.selected_dib)]["results"].pop()
-            print(f'Removed the measurement {last_measurement} for DIB {self.config.selected_dib}'
-                  f' - {len(self.config.measurements[str(self.config.selected_dib)]["results"])} result(s) remaining.')
+        if self.config.measurements[str(self.config.selected_dib)]["ew"]:
+            last_ew = self.config.measurements[str(self.config.selected_dib)]["ew"].pop()
+            last_range = self.config.measurements[str(self.config.selected_dib)]["range"].pop()
+            last_mode = self.config.measurements[str(self.config.selected_dib)]["mode"].pop()
+            last_fwhm = self.config.measurements[str(self.config.selected_dib)]["fwhm"].pop()
+            print('Removed the measurements...\n'
+                  f'\t EW = {last_ew}\n'
+                  f'\t Range = {last_range}\n'
+                  f'\t Mode = {last_mode}\n'
+                  f'\t FWHM = {last_fwhm}\n'
+                  f'{len(self.config.measurements[str(self.config.selected_dib)]["ew"])} result(s) remaining.')
         else:
             print(f'No measurement result for DIB {self.config.selected_dib} found.')
 
