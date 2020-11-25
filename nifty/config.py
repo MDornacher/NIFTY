@@ -7,6 +7,7 @@ LOGGER = logging.getLogger(__name__)
 RANGE_STEP_SIZE = 0.1
 RANGE_SHIFT_SIZE = 0.1
 VELOCITY_SHIFT_STEP_SIZE = 1  # km/s
+SPEED_OF_LIGHT = 299792.458  # km/s
 
 
 class PlotConfig:
@@ -29,7 +30,8 @@ class PlotConfig:
             self.ys_ref_base = ys_ref
             self.xs_ref = np.copy(self.xs_ref_base)
             self.ys_ref = np.copy(self.ys_ref_base)
-        self.stellar_lines = stellar_lines
+        self.stellar_lines_base = stellar_lines
+        self.stellar_lines = np.copy(stellar_lines)
 
         # initialize measurements
         self.measurements = None
@@ -68,7 +70,7 @@ class PlotConfig:
 
         # starting velocities for doppler shift
         self.velocity_shifts = {
-            "data": 0.,
+            "stellar": 0.,
             "ref": 0.,
         }
 
@@ -133,12 +135,12 @@ class PlotConfig:
         shift = (self.x_range_max - self.x_range_min) * step_size
         self.x_range_shift -= shift
 
-    def shift_data_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
-        self.velocity_shifts["data"] += step_size
+    def shift_stellar_lines_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
+        self.velocity_shifts["stellar"] += step_size
         self.apply_velocity_shifts()
 
-    def shift_data_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
-        self.velocity_shifts["data"] -= step_size
+    def shift_stellar_lines_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
+        self.velocity_shifts["stellar"] -= step_size
         self.apply_velocity_shifts()
 
     def shift_ref_data_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
@@ -156,8 +158,9 @@ class PlotConfig:
         self.apply_velocity_shifts()
 
     def apply_velocity_shifts(self):
-        self.ys, self.xs = pyasl.dopplerShift(self.xs_base, self.ys_base,
-                                              self.velocity_shifts["data"])
+        if self.stellar_lines is not None:
+            shift_factor = SPEED_OF_LIGHT / (SPEED_OF_LIGHT + self.velocity_shifts["stellar"])
+            self.stellar_lines = self.stellar_lines_base * shift_factor
         if self.ref_data:
             self.ys_ref, self.xs_ref = pyasl.dopplerShift(self.xs_ref_base, self.ys_ref_base,
                                                           self.velocity_shifts["ref"])
