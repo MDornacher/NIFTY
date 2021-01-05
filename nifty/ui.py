@@ -315,10 +315,11 @@ class PlotUI:
         # TODO: update print_navigation_keyboard_shortcuts with new shortcuts
         # TODO: find faster solution for lots of ifs at every key press (maybe by nesting ifs?)
         # TODO: some shortcuts might interfere with os shortcuts
+        # TODO: 'q' quits the program similar to what was planned for 'esc' but does so without crashing
+        # only process keypress if the text box is inactive
         if hasattr(self, "text_box") and self.text_box.get_active():
             print("textbox is active")
             return
-        print(event.key)
         if event.key == 'h':
             print_navigation_keyboard_shortcuts()
             return
@@ -463,10 +464,6 @@ class PlotUI:
             save_data(self.config.measurements, self.output_file)
             print_measurements(self.config.measurements)
             print_velocity_shifts(self.config.velocity_shifts)
-            return
-        if event.key == 'escape':
-            # TODO: 'Process finished with exit code -1073741819 (0xC0000005)' but closing it with X button works fine
-            plt.close('all')
             return
         if event.key == 'alt' or event.key == 'control':
             return
