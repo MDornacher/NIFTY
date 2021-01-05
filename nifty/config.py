@@ -69,6 +69,7 @@ class PlotConfig:
 
         # starting velocities for doppler shift
         self.velocity_shifts = {
+            "data": 0.,
             "stellar": 0.,
             "ref": 0.,
         }
@@ -134,34 +135,47 @@ class PlotConfig:
         shift = (self.x_range_max - self.x_range_min) * step_size
         self.x_range_shift -= shift
 
+    def shift_data_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
+        self.velocity_shifts["data"] += step_size
+        self.apply_velocity_shifts(mode="data")
+
+    def shift_data_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
+        self.velocity_shifts["data"] -= step_size
+        self.apply_velocity_shifts(mode="data")
+
     def shift_stellar_lines_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
         self.velocity_shifts["stellar"] += step_size
-        self.apply_velocity_shifts()
+        self.apply_velocity_shifts(mode="stellar")
 
     def shift_stellar_lines_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
         self.velocity_shifts["stellar"] -= step_size
-        self.apply_velocity_shifts()
+        self.apply_velocity_shifts(mode="stellar")
 
     def shift_ref_data_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
         if not self.ref_data:
             LOGGER.info("No ref data available for shifting.")
             return
         self.velocity_shifts["ref"] += step_size
-        self.apply_velocity_shifts()
+        self.apply_velocity_shifts(mode="ref")
 
     def shift_ref_data_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
         if not self.ref_data:
             LOGGER.info("No ref data available for shifting.")
             return
         self.velocity_shifts["ref"] -= step_size
-        self.apply_velocity_shifts()
+        self.apply_velocity_shifts(mode="ref")
 
-    def apply_velocity_shifts(self):
-        # TODO: shift for spectrumd
+    def apply_velocity_shifts(self, mode):
+        """
+        Only applies velocity shift to the mode selected wavelengths
+        """
         # TODO: the sign in the shift factor might be wrong
-        if self.stellar_lines is not None:
+        if mode == "data":
+            shift_factor_data = (1.0 + self.velocity_shifts["data"] / SPEED_OF_LIGHT)
+            self.xs = self.xs_base * shift_factor_data
+        if mode == "stellar" and self.stellar_lines is not None:
             shift_factor_stellar = (1.0 + self.velocity_shifts["stellar"] / SPEED_OF_LIGHT)
             self.stellar_lines = self.stellar_lines_base * shift_factor_stellar
-        if self.ref_data:
+        if mode == "ref" and self.ref_data:
             shift_factor_ref = (1.0 + self.velocity_shifts["ref"] / SPEED_OF_LIGHT)
             self.xs_ref = self.xs_ref_base * shift_factor_ref

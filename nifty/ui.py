@@ -283,9 +283,11 @@ class PlotUI:
 
     def plot_doppler_shift(self, ax):
         # bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)  # TODO: make more "modern" with these props
-        s = f'{"Stellar Lines Shift":>25}: {self.config.velocity_shifts["stellar"]:5} km/s'
+        s = f'{"Test Spectrum Shift":>25}: {self.config.velocity_shifts["data"]:5} km/s'
         if self.config.ref_data:
             s += f'\n{"Reference Spectrum Shift":>25}: {self.config.velocity_shifts["ref"]:5} km/s'
+        if self.config.stellar_lines is not None:
+            s += f'\n{"Stellar Lines Shift":>25}: {self.config.velocity_shifts["stellar"]:5} km/s'
         anchored_text = AnchoredText(s, loc='upper right', prop={'family': 'monospace'})
         ax.add_artist(anchored_text)
 
@@ -311,11 +313,12 @@ class PlotUI:
 
     def on_press(self, event):
         # TODO: update print_navigation_keyboard_shortcuts with new shortcuts
-        # TODO: find faster solution for lots of ifs at every key press
+        # TODO: find faster solution for lots of ifs at every key press (maybe by nesting ifs?)
         # TODO: some shortcuts might interfere with os shortcuts
         if hasattr(self, "text_box") and self.text_box.get_active():
             print("textbox is active")
             return
+        print(event.key)
         if event.key == 'h':
             print_navigation_keyboard_shortcuts()
             return
@@ -372,19 +375,21 @@ class PlotUI:
             self.reset_plot()
             return
         if event.key == 'up':
-            self.config.shift_stellar_lines_up()
+            print("shifting data")
+            self.config.shift_data_up()
             self.reset_plot()
             return
         if event.key == 'down':
-            self.config.shift_stellar_lines_down()
+            print("shifting data")
+            self.config.shift_data_down()
             self.reset_plot()
             return
         if event.key == 'ctrl+up':
-            self.config.shift_stellar_lines_up(5 * VELOCITY_SHIFT_STEP_SIZE)
+            self.config.shift_data_up(5 * VELOCITY_SHIFT_STEP_SIZE)
             self.reset_plot()
             return
         if event.key == 'ctrl+down':
-            self.config.shift_stellar_lines_down(5 * VELOCITY_SHIFT_STEP_SIZE)
+            self.config.shift_data_down(5 * VELOCITY_SHIFT_STEP_SIZE)
             self.reset_plot()
             return
         if event.key == 'alt+up':
@@ -402,6 +407,23 @@ class PlotUI:
         if event.key == 'ctrl+alt+down':
             self.config.shift_ref_data_down(5 * VELOCITY_SHIFT_STEP_SIZE)
             self.reset_plot()
+            return
+        if event.key == 'pageup':
+            self.config.shift_stellar_lines_up()
+            self.reset_plot()
+            return
+        if event.key == 'pagedown':
+            self.config.shift_stellar_lines_down()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+pageup':
+            self.config.shift_stellar_lines_up(5 * VELOCITY_SHIFT_STEP_SIZE)
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+pagedown':
+            self.config.shift_stellar_lines_down(5 * VELOCITY_SHIFT_STEP_SIZE)
+            self.reset_plot()
+            return
         if event.key == '+':
             self.config.decrease_x_range()
             self.config.update_x_range()
