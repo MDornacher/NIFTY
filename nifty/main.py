@@ -6,9 +6,8 @@ import sys
 
 from nifty.config import PlotConfig
 from nifty.io import (INPUT_TYPES, load_features, load_data,
-                      load_spectrum, load_stellar_lines,
-                      match_spectrum_unit_to_features, trim_features,
-                      trim_spectrum)
+                      load_spectrum, load_lines, match_spectrum_unit_to_features,
+                      trim_features, trim_spectrum)
 from nifty.synth import create_spectrum
 from nifty.prints import (print_banner, print_demo_message,
                           print_summary_of_input_parameters)
@@ -41,16 +40,19 @@ def demo_mode():
 
 def measurement_mode():
     args = parse_input()
-    args = resolve_input_paths(args)
+    args = resolve_paths(args)
     validate_parameters(args)
 
     # initialize static parameters
     dibs = load_features(args.features, unit=args.funit)
     if args.stellar is not None:
-        args = resolve_stellar_paths(args)
-        stellar_lines = load_stellar_lines(args.stellar, unit=args.sunit)
+        stellar_lines = load_lines(args.stellar, unit=args.sunit)
     else:
         stellar_lines = None
+    if args.interstellar is not None:
+        interstellar_lines = load_lines(args.stellar, unit=args.iunit)
+    else:
+        interstellar_lines = None
 
     print_summary_of_input_parameters(args)
 
@@ -91,7 +93,7 @@ def measurement_mode():
 
         config = PlotConfig(xs=xs_trimmed, ys=ys_trimmed, dibs=dibs_trimmed,
                             xs_ref=xs_ref_trimmed, ys_ref=ys_ref_trimmed,
-                            stellar_lines=stellar_lines)
+                            stellar_lines=stellar_lines, interstellar_lines=interstellar_lines)
 
         object_name, _ = os.path.splitext(os.path.basename(selected_input))
         title = f"[ {i + 1} / {len(args.input)}] {object_name}"
@@ -115,48 +117,75 @@ def parse_input():
     parser.add_argument('-o', '--output', default=None, help='Specify the output file.')
     parser.add_argument('--xkey', required=False, default=None, help='Specify key of x values in input file.')
     parser.add_argument('--ykey', required=False, default=None, help='Specify key of y values in input file.')
-    parser.add_argument('-f', '--features', default=None, help='Specify absorption feature input file.')
+
+    parser.add_argument('-f', '--features', required=True, help='Specify absorption feature input file.')
     parser.add_argument('--funit', required=True, help='Specify unit of feature wavelength.')
+
     parser.add_argument('-m', '--matching', help='Match unit of measurement of spectrum to absorption features.',
-                        action='store_true')
-    # TODO: matching might be obsolete
+                        action='store_true')  # TODO: matching might be obsolete
+
     parser.add_argument('--ref', required=False, default=None, help='Specify reference spectrum.')
     parser.add_argument('--rtype', required=False, default=None, type=str.upper, help='Specify type of reference file.')
     parser.add_argument('--runit', required=False, type=str.upper, help='Specify unit of reference wavelength.')
+
     parser.add_argument('--stellar', required=False, default=None, nargs="+",
                         help='Specify input file(s) of stellar reference lines')
-    parser.add_argument('--sunit', required=True, type=str.upper, help='Specify unit of stellar reference lines.')
-    # TODO: --interstellar --iunit
+    parser.add_argument('--sunit', required=False, type=str.upper, help='Specify unit of stellar reference lines.')
+    parser.add_argument('--interstellar', required=False, default=None, nargs="+",
+                        help='Specify input file(s) of interstellar reference lines')
+    parser.add_argument('--iunit', required=False, type=str.upper, help='Specify unit of interstellar reference lines.')
+
     parser.add_argument('--skip', help='Skip processing if output file already exists.', action='store_true')
     parser.add_argument('--vac2air', help='Shift wavelengths from vacuum to air.', action='store_true')
     # TODO: force overwrite parameter like '-F'
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # check required mutually inclusive arguments
+    if args.ref is not None and  args.runit is None:
+        parser.error("--ref requires --rtype and --runit")
+    if args.stellar is not None and args.sunit is None:
+        parser.error("--stellar requires --sunit")
+    if args.interstellar is not None and args.iunit is None:
+        parser.error("--stellar requires --iunit")
+    return args
 
 
-def resolve_input_paths(args):
+def resolve_paths(args):
     if "*" not in args.input:
         args.input = [args.input]
     else:
         args.input = glob.glob(args.input)
         if not args.input:
             raise ValueError(f'No files found while resolving input {args.input}')
-    return args
 
+    # TODO: unify duplicate code
+    if args.stellar is not None:
+        if not isinstance(args.stellar, list):
+            args.stellar = [args.stellar]
+        resolved_stellar_inputs = []
 
-def resolve_stellar_paths(args):
-    # TODO: unify this with resolving input paths
-    if not isinstance(args.stellar, list):
-        args.stellar = [args.stellar]
-    resolved_stellar_inputs = []
+        for stellar_input in args.stellar:
+            if "*" in stellar_input:
+                args.stellar.extend(glob.glob(stellar_input))
+                if not args.stellar:
+                    raise ValueError(f'No files found while resolving stellar reference input {stellar_input}')
+            else:
+                resolved_stellar_inputs.append(stellar_input)
+        args.stellar = resolved_stellar_inputs
 
-    for stellar_input in args.stellar:
-        if "*" in stellar_input:
-            args.stellar.extend(glob.glob(stellar_input))
-            if not args.stellar:
-                raise ValueError(f'No files found while resolving stellar reference input {stellar_input}')
-        else:
-            resolved_stellar_inputs.append(stellar_input)
-    args.stellar = resolved_stellar_inputs
+    if args.interstellar is not None:
+        if not isinstance(args.interstellar, list):
+            args.interstellar = [args.interstellar]
+        resolved_interstellar_inputs = []
+
+        for interstellar_input in args.interstellar:
+            if "*" in interstellar_input:
+                args.interstellar.extend(glob.glob(interstellar_input))
+                if not args.interstellar:
+                    raise ValueError(f'No files found while resolving interstellar reference input {interstellar_input}')
+            else:
+                resolved_interstellar_inputs.append(interstellar_input)
+        args.interstellar = resolved_interstellar_inputs
     return args
 
 

@@ -10,11 +10,14 @@ SPEED_OF_LIGHT = 299792.458  # km/s
 
 
 class PlotConfig:
-    def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None, stellar_lines=None):
+    def __init__(self, xs=None, ys=None, dibs=None, xs_ref=None, ys_ref=None,
+                 stellar_lines=None, interstellar_lines=None):
+        # TODO: basic validation, e.g. raise error if dibs is empty
+        # TODO: unify 'stellar_lines' and 'stellar'
         # parse parameters
         self.xs_base = xs
         self.ys_base = ys
-        self.dibs = dibs  # TODO: raise error if dibs is empty
+        self.dibs = dibs
         self.xs = np.copy(self.xs_base)
         self.ys = np.copy(self.ys_base)
         if xs_ref is None or ys_ref is None:
@@ -31,6 +34,7 @@ class PlotConfig:
             self.ys_ref = np.copy(self.ys_ref_base)
         self.stellar_lines_base = stellar_lines
         self.stellar_lines = np.copy(stellar_lines)
+        self.interstellar_lines = interstellar_lines
 
         # initialize measurements
         self.measurements = None
@@ -65,13 +69,14 @@ class PlotConfig:
             "ref": None,
             "dibs": None,
             "stellar_lines": None,
+            "interstellar_lines": None,
         }
 
         # starting velocities for doppler shift
         self.velocity_shifts = {
             "data": 0.,
-            "stellar": 0.,
             "ref": 0.,
+            "stellar": 0.,
         }
 
     def reset_measurements(self):
@@ -102,6 +107,9 @@ class PlotConfig:
         if self.stellar_lines is not None:
             self.masks["stellar_lines"] = (self.stellar_lines > self.x_range_min) & \
                                           (self.stellar_lines < self.x_range_max)
+        if self.interstellar_lines is not None:
+            self.masks["interstellar_lines"] = (self.interstellar_lines > self.x_range_min) & \
+                                          (self.interstellar_lines < self.x_range_max)
 
     def reset_fit(self):
         self.slope = None

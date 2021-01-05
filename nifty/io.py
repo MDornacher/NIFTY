@@ -12,14 +12,7 @@ UNIT_CONVERSION = {'A': 1., 'NM': 10., 'MUM': 10.**4, 'MM': 10.**7}
 def load_spectrum(input_file, input_type, unit='A', xkey='lambda', ykey='flux'):
     # TODO: UNITS SHOULD BE IN ANGSTROM! OTHERWISE DOPPLERSHIFT DOES _NOT_ WORK...
     if input_type == 'FITS':
-        # TODO: setting y-/x-keys might be redundant / there is probably a cleaner solution
-        xkey_filtered = 'lambda'
-        ykey_filtered = 'flux'
-        if xkey is not None:
-            xkey_filtered = xkey
-        if ykey is not None:
-            ykey_filtered = ykey
-        xs, ys = read_2d_fits_spectrum(input_file, xkey_filtered, ykey_filtered)
+        xs, ys = read_2d_fits_spectrum(input_file, xkey, ykey)
 
     elif input_type == 'NORM':
         xs, ys = read_2d_norm_spectrum(input_file)
@@ -164,7 +157,7 @@ def save_data(data, output_file):
         json.dump(data, f)
 
 
-def load_stellar_lines(input_files, unit='A'):
+def load_lines(input_files, unit='A'):
     stellar_lines = np.array([])
     for input_file in input_files:
         stellar_lines = np.append(stellar_lines, load_features(input_file))

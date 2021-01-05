@@ -36,6 +36,7 @@ def print_summary_of_input_parameters(args):
     # Features: {args.features}
     # Reference spectrum: {args.ref}
     # Stellar lines: {args.stellar}
+    # Interstellar lines: {args.interstellar}
     # Matching: {args.matching}
 
     {'-'*40}

@@ -120,6 +120,9 @@ class PlotUI:
         if self.config.stellar_lines is not None:
             self.plot_stellar_lines(self.ax2)
 
+        if self.config.interstellar_lines is not None:
+            self.plot_interstellar_lines(self.ax2)
+
         if self.config.ys_norm.size > 0:
             self.plot_fit_data(self.ax2)
 
@@ -161,6 +164,9 @@ class PlotUI:
 
         if self.config.stellar_lines is not None:
             self.plot_stellar_lines(self.ax3)
+
+        if self.config.interstellar_lines is not None:
+            self.plot_interstellar_lines(self.ax3)
 
         if self.config.measurements[str(self.config.selected_dib)]['notes']:
             self.plot_notes(self.ax3)
@@ -280,6 +286,11 @@ class PlotUI:
         # the enumerate is used to only plot a legend for the first stellar line
         for i, stellar_line in enumerate(self.config.stellar_lines[self.config.masks["stellar_lines"]]):
             ax.axvline(stellar_line, linestyle=':', color='C4', linewidth=2., alpha=0.5, label='Stellar Lines' if i == 0 else None)
+
+    def plot_interstellar_lines(self, ax):
+        # the enumerate is used to only plot a legend for the first interstellar line
+        for i, interstellar_line in enumerate(self.config.interstellar_lines[self.config.masks["interstellar_lines"]]):
+            ax.axvline(interstellar_line, linestyle=':', color='C5', linewidth=2., alpha=0.5, label='Stellar Lines' if i == 0 else None)
 
     def plot_doppler_shift(self, ax):
         # bbox_props = dict(boxstyle="round", fc="w", ec="0.5", alpha=0.9)  # TODO: make more "modern" with these props
