@@ -30,8 +30,10 @@ class PlotUI:
         # TODO: use file_names instead if available
         if title is not None:
             self.fig.suptitle(title)  # TODO: fig title is fig centered while ax titles are ax centered => unaligned
-        plt.get_current_fig_manager().window.wm_iconbitmap("icon.ico")
-        plt.get_current_fig_manager().window.state('zoomed')
+        # plt.get_current_fig_manager().window.wm_iconbitmap("icon.ico")  # TODO: somehow broken
+        # plt.get_current_fig_manager().window.state('zoomed')  # TODO: only works on windows?
+        mng = plt.get_current_fig_manager()
+        mng.resize(*mng.window.maxsize())
 
         # define events
         self.cid = self.fig.canvas.mpl_connect('key_press_event', self.on_press)
@@ -330,6 +332,20 @@ class PlotUI:
             return
         if event.key == 'right':
             self.config.next_dib()
+            self.config.reset_x_range_shift()
+            self.config.update_x_range()
+            self.config.reset_fit()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+left':
+            self.config.previous_dib(step=10)
+            self.config.reset_x_range_shift()
+            self.config.update_x_range()
+            self.config.reset_fit()
+            self.reset_plot()
+            return
+        if event.key == 'ctrl+right':
+            self.config.next_dib(step=10)
             self.config.reset_x_range_shift()
             self.config.update_x_range()
             self.config.reset_fit()

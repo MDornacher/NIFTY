@@ -1,7 +1,6 @@
 import logging
 
 import numpy as np
-from PyAstronomy import pyasl  # TODO: replace me?
 
 LOGGER = logging.getLogger(__name__)
 RANGE_STEP_SIZE = 0.1
@@ -15,7 +14,7 @@ class PlotConfig:
         # parse parameters
         self.xs_base = xs
         self.ys_base = ys
-        self.dibs = dibs
+        self.dibs = dibs  # TODO: raise error if dibs is empty
         self.xs = np.copy(self.xs_base)
         self.ys = np.copy(self.ys_base)
         if xs_ref is None or ys_ref is None:
@@ -26,8 +25,8 @@ class PlotConfig:
             self.ys_ref = None
         else:
             self.ref_data = True
-            self.xs_ref_base = xs_ref
-            self.ys_ref_base = ys_ref
+            self.xs_ref_base = np.copy(xs_ref)
+            self.ys_ref_base = np.copy(ys_ref)
             self.xs_ref = np.copy(self.xs_ref_base)
             self.ys_ref = np.copy(self.ys_ref_base)
         self.stellar_lines_base = stellar_lines
@@ -112,12 +111,12 @@ class PlotConfig:
         self.ys_fit = np.array([])
         self.ys_norm = np.array([])
 
-    def next_dib(self):
-        self.selection = (self.selection + 1) % len(self.dibs)
+    def next_dib(self, step=1):
+        self.selection = (self.selection + step) % len(self.dibs)
         self.selected_dib = self.dibs[self.selection]
 
-    def previous_dib(self):
-        self.selection = (self.selection - 1) % len(self.dibs)
+    def previous_dib(self, step=1):
+        self.selection = (self.selection - step) % len(self.dibs)
         self.selected_dib = self.dibs[self.selection]
 
     def increase_x_range(self, step_size=RANGE_STEP_SIZE):
@@ -158,9 +157,11 @@ class PlotConfig:
         self.apply_velocity_shifts()
 
     def apply_velocity_shifts(self):
+        # TODO: shift for spectrumd
+        # TODO: the sign in the shift factor might be wrong
         if self.stellar_lines is not None:
-            shift_factor = SPEED_OF_LIGHT / (SPEED_OF_LIGHT + self.velocity_shifts["stellar"])
-            self.stellar_lines = self.stellar_lines_base * shift_factor
+            shift_factor_stellar = (1.0 + self.velocity_shifts["stellar"] / SPEED_OF_LIGHT)
+            self.stellar_lines = self.stellar_lines_base * shift_factor_stellar
         if self.ref_data:
-            self.ys_ref, self.xs_ref = pyasl.dopplerShift(self.xs_ref_base, self.ys_ref_base,
-                                                          self.velocity_shifts["ref"])
+            shift_factor_ref = (1.0 + self.velocity_shifts["ref"] / SPEED_OF_LIGHT)
+            self.xs_ref = self.xs_ref_base * shift_factor_ref

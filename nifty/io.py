@@ -5,10 +5,12 @@ import numpy as np
 from astropy.io import fits
 
 LOGGER = logging.getLogger(__name__)
-INPUT_TYPES = ['FITS', 'NORM']
+INPUT_TYPES = ['FITS', 'NORM', 'SPEC']
+UNIT_CONVERSION = {'A': 1., 'NM': 10., 'MUM': 10.**4, 'MM': 10.**7}
 
 
-def load_spectrum(input_file, input_type, xkey=None, ykey=None):
+def load_spectrum(input_file, input_type, unit='A', xkey='lambda', ykey='flux'):
+    # TODO: UNITS SHOULD BE IN ANGSTROM! OTHERWISE DOPPLERSHIFT DOES _NOT_ WORK...
     if input_type == 'FITS':
         # TODO: setting y-/x-keys might be redundant / there is probably a cleaner solution
         xkey_filtered = 'lambda'
@@ -17,13 +19,20 @@ def load_spectrum(input_file, input_type, xkey=None, ykey=None):
             xkey_filtered = xkey
         if ykey is not None:
             ykey_filtered = ykey
-        return read_2d_fits_spectrum(input_file, xkey_filtered, ykey_filtered)
+        xs, ys = read_2d_fits_spectrum(input_file, xkey_filtered, ykey_filtered)
 
-    if input_type == 'NORM':
-        return read_2d_norm_spectrum(input_file)
+    elif input_type == 'NORM':
+        xs, ys = read_2d_norm_spectrum(input_file)
 
-    # TODO: add import for other input types, e.g.: 'ASCII'(?)
-    raise ValueError(f'Type "{input_type}" is not in list of valid input types {INPUT_TYPES}.')
+    elif input_type == 'SPEC':
+        xs, ys = read_2d_norm_spectrum(input_file)
+
+    else:
+        raise ValueError(f'Type "{input_type}" is not in list of valid input types {INPUT_TYPES}.')
+        # TODO: add import for other input types, e.g.: 'ASCII'(?)
+    if unit not in UNIT_CONVERSION:
+        raise ValueError()  # TODO: write error message
+    return xs * UNIT_CONVERSION[unit], ys
 
 
 def read_2d_fits_spectrum(input_file, xkey='lambda', ykey='flux'):
@@ -89,7 +98,7 @@ def trim_spectrum(xs, ys):
                      f'{len(xs_trimmed)} != {len(ys_trimmed)}')
 
 
-def load_features(input_file):
+def load_features(input_file, unit='A'):
     with open(input_file) as f:
         data_raw = f.read().splitlines()
     data_final = []
@@ -103,7 +112,10 @@ def load_features(input_file):
     if data_errors:
         LOGGER.warning(f'The following entries in feature input "{input_file}" could not be loaded: '
                        f'{data_errors}')
-    return np.sort(np.array(data_final))
+
+    if unit not in UNIT_CONVERSION:
+        raise ValueError()  # TODO: write error message
+    return np.sort(np.array(data_final)) * UNIT_CONVERSION[unit]
 
 
 def trim_features(features, feature_min=None, feature_max=None):
@@ -152,8 +164,10 @@ def save_data(data, output_file):
         json.dump(data, f)
 
 
-def load_stellar_lines(input_files):
+def load_stellar_lines(input_files, unit='A'):
     stellar_lines = np.array([])
     for input_file in input_files:
         stellar_lines = np.append(stellar_lines, load_features(input_file))
-    return stellar_lines
+    if unit not in UNIT_CONVERSION:
+        raise ValueError(f'{unit} is not {UNIT_CONVERSION.keys()}')  # TODO: write error message
+    return np.sort(stellar_lines * UNIT_CONVERSION[unit])

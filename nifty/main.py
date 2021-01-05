@@ -14,6 +14,9 @@ from nifty.prints import (print_banner, print_demo_message,
                           print_summary_of_input_parameters)
 from nifty.ui import PlotUI
 
+import ref_index
+
+
 LOGGER = logging.getLogger(__name__)
 FEATURE_PATH = os.path.join('resources', 'dibs')
 DEFAULT_NIFTY_OUTPUT_EXTENSION = '_nifty.json'
@@ -42,11 +45,10 @@ def measurement_mode():
     validate_parameters(args)
 
     # initialize static parameters
-    dibs = load_features(args.features)
+    dibs = load_features(args.features, unit=args.funit)
     if args.stellar is not None:
         args = resolve_stellar_paths(args)
-        print(args.stellar)
-        stellar_lines = load_stellar_lines(args.stellar)
+        stellar_lines = load_stellar_lines(args.stellar, unit=args.sunit)
     else:
         stellar_lines = None
 
@@ -66,7 +68,9 @@ def measurement_mode():
         else:
             measurements = None
 
-        xs, ys = load_spectrum(selected_input, args.type, args.xkey, args.ykey)
+        xs, ys = load_spectrum(selected_input, args.type, unit=args.unit, xkey=args.xkey, ykey=args.ykey)
+        if args.vac2air:
+            xs = ref_index.vac2air(xs / 10.) * 10.  # expects wavelengths in nanometers
         if args.matching:
             xs = match_spectrum_unit_to_features(xs, dibs)
 
@@ -76,7 +80,9 @@ def measurement_mode():
 
         # matching procedure for the reference spectrum (if available)
         if args.ref is not None:
-            xs_ref, ys_ref = load_spectrum(args.ref, args.type, args.xkey, args.ykey)
+            if args.rtype is None:
+                args.rtype = args.type
+            xs_ref, ys_ref = load_spectrum(args.ref, args.rtype, unit=args.runit, xkey=args.xkey, ykey=args.ykey)
             if args.matching:
                 xs_ref = match_spectrum_unit_to_features(xs_ref, dibs)
             xs_ref_trimmed, ys_ref_trimmed = trim_spectrum(xs_ref, ys_ref)
@@ -89,8 +95,12 @@ def measurement_mode():
 
         object_name, _ = os.path.splitext(os.path.basename(selected_input))
         title = f"[ {i + 1} / {len(args.input)}] {object_name}"
-        file_names = {"data": os.path.basename(selected_input),
-                      "ref": os.path.basename(args.ref)}
+
+        if args.ref is not None:
+            file_names = {"data": os.path.basename(selected_input),
+                          "ref": os.path.basename(args.ref)}
+        else:
+            file_names = None
         PlotUI(config, args.output, measurements, title, file_names)
         # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
         # TODO: additional console for LOGGER
@@ -101,16 +111,24 @@ def parse_input():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', required=True, help='Specify spectrum input file.')
     parser.add_argument('-t', '--type', required=True, type=str.upper, help='Specify type of input file.')
+    parser.add_argument('-u', '--unit', required=True, type=str.upper, help='Specify unit of input wavelength.')
     parser.add_argument('-o', '--output', default=None, help='Specify the output file.')
     parser.add_argument('--xkey', required=False, default=None, help='Specify key of x values in input file.')
     parser.add_argument('--ykey', required=False, default=None, help='Specify key of y values in input file.')
     parser.add_argument('-f', '--features', default=None, help='Specify absorption feature input file.')
+    parser.add_argument('--funit', required=True, help='Specify unit of feature wavelength.')
     parser.add_argument('-m', '--matching', help='Match unit of measurement of spectrum to absorption features.',
                         action='store_true')
+    # TODO: matching might be obsolete
     parser.add_argument('--ref', required=False, default=None, help='Specify reference spectrum.')
+    parser.add_argument('--rtype', required=False, default=None, type=str.upper, help='Specify type of reference file.')
+    parser.add_argument('--runit', required=False, type=str.upper, help='Specify unit of reference wavelength.')
     parser.add_argument('--stellar', required=False, default=None, nargs="+",
                         help='Specify input file(s) of stellar reference lines')
+    parser.add_argument('--sunit', required=True, type=str.upper, help='Specify unit of stellar reference lines.')
+    # TODO: --interstellar --iunit
     parser.add_argument('--skip', help='Skip processing if output file already exists.', action='store_true')
+    parser.add_argument('--vac2air', help='Shift wavelengths from vacuum to air.', action='store_true')
     # TODO: force overwrite parameter like '-F'
     return parser.parse_args()
 
