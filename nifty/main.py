@@ -50,7 +50,7 @@ def measurement_mode():
     else:
         stellar_lines = None
     if args.interstellar is not None:
-        interstellar_lines = load_lines(args.stellar, unit=args.iunit)
+        interstellar_lines = load_lines(args.interstellar, unit=args.iunit)
     else:
         interstellar_lines = None
 
@@ -82,6 +82,11 @@ def measurement_mode():
         # remove leading and trailing zeros from spectrum and use new min/max to trim features
         xs_trimmed, ys_trimmed = trim_spectrum(xs, ys)
         dibs_trimmed = trim_features(dibs, xs_trimmed.min(), xs_trimmed.max())
+        if dibs_trimmed.size == 0:
+            print("Processing skipped, no overlap between spectrum and features.")
+            LOGGER.info("Processing skipped, no overlap between spectrum and features.")
+            args.output = None  # TODO: this is a bad fix for multifile input
+            continue
 
         # matching procedure for the reference spectrum (if available)
         if args.ref is not None:
