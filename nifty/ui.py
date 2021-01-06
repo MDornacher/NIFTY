@@ -24,6 +24,7 @@ class PlotUI:
         if velocity_shifts is not None:
             self.config.velocity_shifts = velocity_shifts
             self.config.validate_velocity_shifts()
+            self.config.apply_velocity_shifts()
         self.output_file = output_file
         self.file_names = file_names
 

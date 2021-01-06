@@ -199,17 +199,17 @@ class PlotConfig:
         self.velocity_shifts["stellar"] -= step_size
         self.apply_velocity_shifts(mode="stellar")
 
-    def apply_velocity_shifts(self, mode):
+    def apply_velocity_shifts(self, mode="all"):
         """
         Only applies velocity shift to the mode selected wavelengths
         """
         # TODO: the sign in the shift factor might be wrong
-        if mode == "data":
+        if mode == "all" or mode == "data":
             shift_factor_data = (1.0 + self.velocity_shifts["data"] / SPEED_OF_LIGHT)
             self.xs = self.xs_base * shift_factor_data
-        if mode == "stellar" and self.stellar_lines is not None:
+        if (mode == "all" or mode == "stellar") and self.stellar_lines is not None:
             shift_factor_stellar = (1.0 + self.velocity_shifts["stellar"] / SPEED_OF_LIGHT)
             self.stellar_lines = self.stellar_lines_base * shift_factor_stellar
-        if mode == "ref" and self.ref_data:
+        if (mode == "all" or mode == "ref") and self.ref_data:
             shift_factor_ref = (1.0 + self.velocity_shifts["ref"] / SPEED_OF_LIGHT)
             self.xs_ref = self.xs_ref_base * shift_factor_ref
