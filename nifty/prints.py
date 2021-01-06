@@ -77,4 +77,5 @@ def print_measurements(measurements):
 def print_velocity_shifts(velocity_shifts):
     print(f'Velocity shifts:')
     for key, value in velocity_shifts.items():
-        print(print(f'\t{key}: {value}'))
+        print(f'\t{key}: {value}')
+    print(velocity_shifts)

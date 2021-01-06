@@ -40,6 +40,10 @@ class PlotConfig:
         self.measurements = None
         self.reset_measurements()
 
+        # starting velocities for doppler shift
+        self.velocity_shifts = None
+        self.reset_velocity_shifts()
+
         # parameter for norm plot
         self.slope = None
         self.intercept = None
@@ -72,14 +76,8 @@ class PlotConfig:
             "interstellar_lines": None,
         }
 
-        # starting velocities for doppler shift
-        self.velocity_shifts = {
-            "data": 0.,
-            "ref": 0.,
-            "stellar": 0.,
-        }
-
     def reset_measurements(self):
+        # TODO: using str(float) is not a good idea without some rounding, unfortunately this is already used a lot
         self.measurements = {str(dib): {"ew": [],
                                         "notes": "",
                                         "marked": False,
@@ -87,6 +85,34 @@ class PlotConfig:
                                         "range": [],
                                         "fwhm": []}
                              for dib in self.dibs}
+
+    def validate_measurements(self):
+        dibs_test_list = [str(dib) for dib in self.dibs]
+        results_test_list = list(self.measurements.keys())
+
+        dibs_test_list.sort()
+        results_test_list.sort()
+
+        if dibs_test_list != results_test_list:
+            LOGGER.warning('The features and the loaded measurements do not match. '
+                           'Therefore the measurements will be ignored '
+                           'and when saving them the output file will be overwritten.')
+            self.reset_measurements()
+
+    def reset_velocity_shifts(self):
+        self.velocity_shifts = {
+            "data": 0.,
+            "ref": 0.,
+            "stellar": 0.,
+        }
+
+    def validate_velocity_shifts(self):
+        for key in self.velocity_shifts.keys():
+            if key not in ["data", "ref", "stellar"]:
+                LOGGER.warning(f'The velocity shift {key} is unknown. '
+                               'Therefore the velocity shifts will be ignored '
+                               'and when saving them the output file will be overwritten.')
+                self.reset_velocity_shifts()
 
     def reset_x_range_shift(self):
         self.x_range_shift = 0.
@@ -151,14 +177,6 @@ class PlotConfig:
         self.velocity_shifts["data"] -= step_size
         self.apply_velocity_shifts(mode="data")
 
-    def shift_stellar_lines_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
-        self.velocity_shifts["stellar"] += step_size
-        self.apply_velocity_shifts(mode="stellar")
-
-    def shift_stellar_lines_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
-        self.velocity_shifts["stellar"] -= step_size
-        self.apply_velocity_shifts(mode="stellar")
-
     def shift_ref_data_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
         if not self.ref_data:
             LOGGER.info("No ref data available for shifting.")
@@ -172,6 +190,14 @@ class PlotConfig:
             return
         self.velocity_shifts["ref"] -= step_size
         self.apply_velocity_shifts(mode="ref")
+
+    def shift_stellar_lines_up(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
+        self.velocity_shifts["stellar"] += step_size
+        self.apply_velocity_shifts(mode="stellar")
+
+    def shift_stellar_lines_down(self, step_size=VELOCITY_SHIFT_STEP_SIZE):
+        self.velocity_shifts["stellar"] -= step_size
+        self.apply_velocity_shifts(mode="stellar")
 
     def apply_velocity_shifts(self, mode):
         """

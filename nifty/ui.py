@@ -15,12 +15,15 @@ LOGGER = logging.getLogger(__name__)
 
 
 class PlotUI:
-    def __init__(self, config, output_file, measurements=None, title=None, file_names=None):
+    def __init__(self, config, output_file, measurements=None, velocity_shifts=None, title=None, file_names=None):
         # parse input
         self.config = config
         if measurements is not None:
             self.config.measurements = measurements
-            self.validate_measurements()
+            self.config.validate_measurements()
+        if velocity_shifts is not None:
+            self.config.velocity_shifts = velocity_shifts
+            self.config.validate_velocity_shifts()
         self.output_file = output_file
         self.file_names = file_names
 
@@ -53,19 +56,6 @@ class PlotUI:
 
         self.reset_plot()
         plt.show()
-
-    def validate_measurements(self):
-        dibs_test_list = [str(dib) for dib in self.config.dibs]
-        results_test_list = list(self.config.measurements.keys())
-
-        dibs_test_list.sort()
-        results_test_list.sort()
-
-        if dibs_test_list != results_test_list:
-            LOGGER.warning('The features and the loaded measurements do not match. '
-                           'Therefore the measurements will be ignored '
-                           'and when saving them the output file will be overwritten.')
-            self.config.reset_measurements()
 
     def reset_plot(self):
         self.config.calculate_masks()
@@ -325,7 +315,7 @@ class PlotUI:
     def on_press(self, event):
         # TODO: update print_navigation_keyboard_shortcuts with new shortcuts
         # TODO: find faster solution for lots of ifs at every key press (maybe by nesting ifs?)
-        # TODO: some shortcuts might interfere with os shortcuts
+        # TODO: some shortcuts might interfere with os or matplotlib shortcuts
         # TODO: 'q' quits the program similar to what was planned for 'esc' but does so without crashing
         # only process keypress if the text box is inactive
         if hasattr(self, "text_box") and self.text_box.get_active():
@@ -387,12 +377,10 @@ class PlotUI:
             self.reset_plot()
             return
         if event.key == 'up':
-            print("shifting data")
             self.config.shift_data_up()
             self.reset_plot()
             return
         if event.key == 'down':
-            print("shifting data")
             self.config.shift_data_down()
             self.reset_plot()
             return
@@ -472,7 +460,8 @@ class PlotUI:
             return
         if event.key == ' ':
             LOGGER.info(f'Saving measurements to {self.output_file}')
-            save_data(self.config.measurements, self.output_file)
+            data = {"measurements": self.config.measurements, "velocity_shifts": self.config.velocity_shifts}
+            save_data(data, self.output_file)
             print_measurements(self.config.measurements)
             print_velocity_shifts(self.config.velocity_shifts)
             return

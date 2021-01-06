@@ -4,6 +4,8 @@ import logging
 import os
 import sys
 
+import ref_index
+
 from nifty.config import PlotConfig
 from nifty.io import (INPUT_TYPES, load_features, load_data,
                       load_spectrum, load_lines, match_spectrum_unit_to_features,
@@ -12,8 +14,6 @@ from nifty.synth import create_spectrum
 from nifty.prints import (print_banner, print_demo_message,
                           print_summary_of_input_parameters)
 from nifty.ui import PlotUI
-
-import ref_index
 
 
 LOGGER = logging.getLogger(__name__)
@@ -66,9 +66,12 @@ def measurement_mode():
                 LOGGER.info("Processing skipped, because output file already exists")
                 args.output = None  # TODO: this is a bad fix for multifile input
                 continue
-            measurements = load_data(args.output)
+            data = load_data(args.output)
+            measurements = data["measurements"]
+            velocity_shifts = data["velocity_shifts"]
         else:
             measurements = None
+            velocity_shifts = None
 
         xs, ys = load_spectrum(selected_input, args.type, unit=args.unit, xkey=args.xkey, ykey=args.ykey)
         if args.vac2air:
@@ -96,14 +99,14 @@ def measurement_mode():
                             stellar_lines=stellar_lines, interstellar_lines=interstellar_lines)
 
         object_name, _ = os.path.splitext(os.path.basename(selected_input))
-        title = f"[ {i + 1} / {len(args.input)}] {object_name}"
+        title = f"[ {i + 1} / {len(args.input)} ] {object_name}"
 
         if args.ref is not None:
             file_names = {"data": os.path.basename(selected_input),
                           "ref": os.path.basename(args.ref)}
         else:
             file_names = None
-        PlotUI(config, args.output, measurements, title, file_names)
+        PlotUI(config, args.output, measurements, velocity_shifts, title, file_names)
         # TODO: plt.close() somehow breaks the programm, maybe something wrong with matplotlib installation
         # TODO: additional console for LOGGER
         args.output = None  # TODO: this is a bad fix for multifile input
