@@ -76,6 +76,8 @@ def measurement_mode():
         xs, ys = load_spectrum(selected_input, args.type, unit=args.unit, xkey=args.xkey, ykey=args.ykey)
         if args.vac2air:
             xs = ref_index.vac2air(xs / 10.) * 10.  # expects wavelengths in nanometers
+        if args.air2vac:
+            xs = ref_index.air2vac(xs / 10.) * 10.  # expects wavelengths in nanometers
         if args.matching:
             xs = match_spectrum_unit_to_features(xs, dibs)
 
@@ -93,6 +95,10 @@ def measurement_mode():
             if args.rtype is None:
                 args.rtype = args.type
             xs_ref, ys_ref = load_spectrum(args.ref, args.rtype, unit=args.runit, xkey=args.xkey, ykey=args.ykey)
+            if args.vac2air:
+                xs_ref = ref_index.vac2air(xs_ref / 10.) * 10.  # expects wavelengths in nanometers
+            if args.air2vac:
+                xs_ref = ref_index.air2vac(xs_ref / 10.) * 10.  # expects wavelengths in nanometers
             if args.matching:
                 xs_ref = match_spectrum_unit_to_features(xs_ref, dibs)
             xs_ref_trimmed, ys_ref_trimmed = trim_spectrum(xs_ref, ys_ref)
@@ -145,6 +151,7 @@ def parse_input():
 
     parser.add_argument('--skip', help='Skip processing if output file already exists.', action='store_true')
     parser.add_argument('--vac2air', help='Shift wavelengths from vacuum to air.', action='store_true')
+    parser.add_argument('--air2vac', help='Shift wavelengths from air to vacuum.', action='store_true')
     # TODO: force overwrite parameter like '-F'
     args = parser.parse_args()
 
