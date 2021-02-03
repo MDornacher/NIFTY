@@ -66,7 +66,7 @@ class PlotUI:
         self.reset_plot_bottom()
 
         self.reset_textbox()
-        self.fig.canvas.draw()
+        self.fig.canvas.draw_idle()  # much faster then draw(), but only testet on linux
 
     def reset_plot_top(self):
         self.ax1.clear()
@@ -74,11 +74,10 @@ class PlotUI:
         self.ax1.grid()
         if self.config.ref_data:
             ref_label = f'Reference Spectrum ({self.file_names["ref"]})' if self.file_names is not None else 'Reference Spectrum'
-            self.ax1.plot(self.config.xs_ref, self.config.ys_ref, '--', color='k', alpha=0.5,
+            self.ax1.plot(self.config.xs_ref, self.config.ys_ref, '--', color='k', alpha=0.5, drawstyle='steps-mid',
                           label=ref_label)
         data_label = f'Test Spectrum ({self.file_names["data"]})' if self.file_names is not None else 'Test Spectrum'
-        self.ax1.plot(self.config.xs, self.config.ys, '-', color='C0',
-                      label=data_label)
+        self.ax1.plot(self.config.xs, self.config.ys, '-', color='C0', drawstyle='steps-mid', label=data_label)
         self.ax1.plot(self.config.dibs, [1.1] * len(self.config.dibs), 'k|', label='Test Features')
         self.ax1.plot(self.config.selected_dib, [1.1], 'rv', label='Selected Feature')
         if self.config.x_range_min > self.config.xs.min():
@@ -100,11 +99,11 @@ class PlotUI:
         if self.config.ref_data:
             self.ax2.plot(self.config.xs_ref[self.config.masks["ref"]],
                           self.config.ys_ref[self.config.masks["ref"]],
-                          '--', color='k', alpha=0.5, label='Reference Spectrum')
+                          '--', color='k', alpha=0.5, drawstyle='steps-mid', label='Reference Spectrum')
 
         self.ax2.plot(self.config.xs[self.config.masks["data"]],
                       self.config.ys[self.config.masks["data"]],
-                      '-', color='C0', label='Test Spectrum')
+                      '-', color='C0', drawstyle='steps-mid', label='Test Spectrum')
 
         self.plot_dibs(self.ax2)
 
@@ -133,18 +132,18 @@ class PlotUI:
         if self.config.ref_data:
             self.ax3.plot(self.config.xs_ref[self.config.masks["ref"]],
                           self.config.ys_ref[self.config.masks["ref"]],
-                          '--', color='k', alpha=0.5, label='Reference Spectrum')
+                          '--', color='k', alpha=0.5, drawstyle='steps-mid', label='Reference Spectrum')
 
         if self.config.ys_norm.size > 0:
             self.ax3.plot(self.config.xs[self.config.masks["data"]],
                           self.config.ys_norm[self.config.masks["data"]],
-                          '-', color='C0', label='Normed Test Spectrum')
+                          '-', color='C0', drawstyle='steps-mid', label='Normed Test Spectrum')
             self.span_measurement.set_active(True)
 
         else:
             self.ax3.plot(self.config.xs[self.config.masks["data"]],
                           self.config.ys[self.config.masks["data"]],
-                          '-', color='C0', label='Test Spectrum')
+                          '-', color='C0', drawstyle='steps-mid', label='Test Spectrum')
             # "block" third plot if no fit
             self.span_measurement.set_active(False)
 
@@ -185,7 +184,7 @@ class PlotUI:
         self.reset_plot_middle()
         # self.ax2.legend()  # TODO: write legend for middle plot
         self.reset_plot_bottom()
-        self.fig.canvas.draw()
+        self.fig.canvas.draw_idle()
 
     def plot_fit_data(self, ax):
         # TODO: maybe it's best to remove this for a better overview
@@ -237,10 +236,10 @@ class PlotUI:
         if fwhm is not None:
             self.plot_fwhm_data(self.ax3, hmx, half)
         # self.ax3.legend()  # TODO: write legend for bottom plot
-        self.fig.canvas.draw()
+        self.fig.canvas.draw_idle()
 
     def plot_ew_data(self, ax, indmin, indmax):
-        ax.fill_between(self.config.xs, self.config.ys_norm, 1,
+        ax.fill_between(self.config.xs, self.config.ys_norm, 1, step="mid",
                         where=(self.config.xs > self.config.xs[indmin]) & (self.config.xs <= self.config.xs[indmax]),
                         color='C2', alpha=0.5, label="Feature Integral")  # TODO: label does not work
 
@@ -255,13 +254,13 @@ class PlotUI:
         self.reset_plot_bottom()
         if self.config.measurements[str(self.config.selected_dib)]['notes']:
             self.plot_notes(self.ax3)
-        self.fig.canvas.draw()
+        self.fig.canvas.draw_idle()
         self.text_box.set_active(False)
 
     def activate_textbox(self):
         self.text_box.set_active(True)
         self.text_box.color = '1'
-        self.fig.canvas.draw()
+        self.fig.canvas.draw_idle()
 
     def reset_textbox(self):
         self.text_box.set_val(self.config.measurements[str(self.config.selected_dib)]["notes"])
@@ -449,7 +448,7 @@ class PlotUI:
             self.toggle_measurement_mark()
             self.reset_plot_bottom()
             # self.plot_marked(self.ax3)
-            self.fig.canvas.draw()
+            self.fig.canvas.draw_idle()
             return
         if event.key == 'n':
             # TODO: the first n will always be printed in textbox
